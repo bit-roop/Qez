@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { signAuthToken } from "@/lib/auth";
-import { getGoogleOAuthConfig } from "@/lib/auth";
+import { getGoogleOAuthConfigForRequest, signAuthToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type GoogleTokenResponse = {
@@ -16,7 +15,7 @@ type GoogleUserInfo = {
 };
 
 export async function GET(request: NextRequest) {
-  const config = getGoogleOAuthConfig();
+  const config = getGoogleOAuthConfigForRequest(request);
 
   if (!config) {
     return NextResponse.redirect(new URL("/login?error=google-not-configured", request.url));

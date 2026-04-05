@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
+import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createRandomToken, getGoogleOAuthConfig } from "@/lib/auth";
+import { createRandomToken, getGoogleOAuthConfigForRequest } from "@/lib/auth";
 
-export async function GET() {
-  const config = getGoogleOAuthConfig();
+export async function GET(request: NextRequest) {
+  const config = getGoogleOAuthConfigForRequest(request);
 
   if (!config) {
     return NextResponse.json(

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
 import { saveSession } from "@/lib/client-auth";
 import { AuthSession } from "@/types/client-auth";
 
@@ -27,8 +27,29 @@ const registerRoles = [
 
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const oauthError = useMemo(() => {
+    const code = searchParams.get("error");
+
+    switch (code) {
+      case "google-not-configured":
+        return "Google sign-in is not configured for this environment.";
+      case "google-state-mismatch":
+        return "Google sign-in expired or the callback URL did not match. Try again.";
+      case "google-token":
+        return "Google sign-in could not exchange the authorization code.";
+      case "google-userinfo":
+        return "Google sign-in could not load your profile.";
+      case "google-email-not-verified":
+        return "Your Google email must be verified before you can sign in.";
+      case "google-callback":
+        return "Google sign-in failed during the callback step.";
+      default:
+        return null;
+    }
+  }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -152,7 +173,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </label>
           ) : null}
 
-          {error ? <p className="form-error">{error}</p> : null}
+          {error || oauthError ? <p className="form-error">{error ?? oauthError}</p> : null}
 
           <button className="primary-link button-reset wide-button" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Please wait..." : isLogin ? "Login" : "Create account"}

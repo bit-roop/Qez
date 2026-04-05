@@ -1,5 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/api";
-import { createRandomToken, hashOpaqueToken } from "@/lib/auth";
+import { createRandomToken, hashOpaqueToken, resolveBaseUrl } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { forgotPasswordSchema } from "@/lib/validators/auth";
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       }
     });
 
-    const resetLink = `${APP_URL ?? "http://localhost:3000"}/reset-password?token=${rawToken}`;
+    const resetLink = `${resolveBaseUrl(request)}/reset-password?token=${rawToken}`;
 
     if (RESEND_API_KEY && RESEND_FROM_EMAIL) {
       const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -68,6 +68,18 @@ export async function POST(request: Request) {
           message: "Password reset link sent."
         });
       }
+
+      const resendError = (await emailResponse.json().catch(() => null)) as
+        | { message?: string; error?: string; name?: string }
+        | null;
+
+      const resendMessage =
+        resendError?.message ?? resendError?.error ?? "Email delivery failed at the provider.";
+
+      return jsonError(
+        `Password reset email could not be sent. ${resendMessage} Check RESEND_FROM_EMAIL and your verified Resend domain.`,
+        502
+      );
     }
 
     return jsonOk({
