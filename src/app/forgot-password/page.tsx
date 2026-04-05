@@ -6,6 +6,7 @@ import { FormEvent, useState } from "react";
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -13,6 +14,7 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setError(null);
     setMessage(null);
+    setResetLink(null);
     setIsSubmitting(true);
 
     try {
@@ -30,7 +32,8 @@ export default function ForgotPasswordPage() {
         throw new Error(data.error ?? "Unable to prepare password reset.");
       }
 
-      setMessage(data.resetLink ? `${data.message} ${data.resetLink}` : data.message ?? "Reset prepared.");
+      setMessage(data.message ?? "Reset prepared.");
+      setResetLink(data.resetLink ?? null);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Something went wrong.");
     } finally {
@@ -56,6 +59,12 @@ export default function ForgotPasswordPage() {
           </label>
 
           {message ? <p className="form-success">{message}</p> : null}
+          {resetLink ? (
+            <div className="reset-link-card">
+              <span>Reset link</span>
+              <a href={resetLink}>{resetLink}</a>
+            </div>
+          ) : null}
           {error ? <p className="form-error">{error}</p> : null}
 
           <button className="primary-link button-reset wide-button" disabled={isSubmitting} type="submit">

@@ -101,15 +101,15 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
 
         <div className="webinar-host-highlight">
           <span className="question-badge">Live Ops</span>
-          <strong>{activeQuiz ? activeQuiz.title : "No webinar is live yet"}</strong>
+          <strong>{activeQuiz ? activeQuiz.title : "No live event yet"}</strong>
           <span>{activeQuiz ? `Join code ${activeQuiz.joinCode}` : "Activate a webinar quiz to start the event."}</span>
           {activeQuiz ? (
             <Link className="primary-button" href={`/quizzes/${activeQuiz.id}/host`}>
-              Open host control
+              Open live control
             </Link>
           ) : (
             <Link className="secondary-button" href="/dashboard/teacher">
-              Create webinar quiz
+              Open quiz studio
             </Link>
           )}
         </div>
@@ -228,7 +228,7 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
                 </dl>
                 <div className="quiz-actions">
                   <Link className="primary-button" href={`/quizzes/${quiz.id}/host`}>
-                    Host room
+                    Live control
                   </Link>
                   <Link className="secondary-button" href={`/quizzes/${quiz.id}/leaderboard`}>
                     Public board

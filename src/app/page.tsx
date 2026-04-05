@@ -93,6 +93,7 @@ export default function HomePage() {
   const dashboardPath = getDefaultDashboardPath(session.user.role);
   const isStudent = session.user.role === "STUDENT";
   const isHost = session.user.role === "WEBINAR_HOST";
+  const isAdmin = session.user.role === "ADMIN";
 
   return (
     <main className="page-shell home-shell">
@@ -137,20 +138,40 @@ export default function HomePage() {
           ) : isHost ? (
             <>
               <article className="home-card home-card--accent">
-                <span className="question-badge">Host Control</span>
-                <h2>Open the live event room</h2>
-                <p>Launch webinar quizzes, watch rankings, and reveal winners on stage.</p>
+                <span className="question-badge">Live Control</span>
+                <h2>Run the stage in real time</h2>
+                <p>Open your live event dashboard, start rounds, and reveal winners with the public board ready.</p>
                 <Link className="primary-button" href={dashboardPath}>
-                  Open host dashboard
+                  Open live control
                 </Link>
               </article>
 
               <article className="home-card">
-                <span className="question-badge">Quick Action</span>
-                <h2>Manage webinar rounds</h2>
-                <p>See active events, switch quiz states, and jump straight into the host screen.</p>
-                <Link className="secondary-button" href={dashboardPath}>
-                  Go to host workspace
+                <span className="question-badge">Studio</span>
+                <h2>Create the next webinar quiz</h2>
+                <p>Jump into quiz setup, prepare new rounds, and keep your live queue ready.</p>
+                <Link className="secondary-button" href="/dashboard/teacher">
+                  Open quiz studio
+                </Link>
+              </article>
+            </>
+          ) : isAdmin ? (
+            <>
+              <article className="home-card home-card--accent">
+                <span className="question-badge">Admin</span>
+                <h2>Open the control center</h2>
+                <p>Monitor users, quiz activity, and suspicious attempts from the platform overview.</p>
+                <Link className="primary-button" href={dashboardPath}>
+                  Open admin dashboard
+                </Link>
+              </article>
+
+              <article className="home-card">
+                <span className="question-badge">Oversight</span>
+                <h2>Review the creation workspace</h2>
+                <p>Jump into the quiz studio if you need to inspect creator-facing flows directly.</p>
+                <Link className="secondary-button" href="/dashboard/teacher">
+                  Open quiz studio
                 </Link>
               </article>
             </>

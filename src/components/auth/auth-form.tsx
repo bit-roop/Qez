@@ -88,8 +88,10 @@ export function AuthForm({ mode }: AuthFormProps) {
       saveSession(data);
 
       const roleRoute =
-        data.user.role === "TEACHER" || data.user.role === "ADMIN"
-          ? "/dashboard/teacher"
+        data.user.role === "ADMIN"
+          ? "/dashboard/admin"
+          : data.user.role === "TEACHER"
+            ? "/dashboard/teacher"
           : data.user.role === "WEBINAR_HOST"
             ? "/dashboard/host"
             : "/dashboard/student";
@@ -189,6 +191,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isLogin ? (
           <p className="auth-switch">
             <Link href="/forgot-password">Forgot password?</Link>
+          </p>
+        ) : null}
+        {isLogin ? (
+          <p className="auth-switch auth-switch--secondary">
+            <Link href="/admin/login">Admin portal login</Link>
           </p>
         ) : null}
       </section>

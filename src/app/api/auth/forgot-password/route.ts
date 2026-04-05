@@ -3,10 +3,6 @@ import { createRandomToken, hashOpaqueToken, resolveBaseUrl } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { forgotPasswordSchema } from "@/lib/validators/auth";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
-const APP_URL = process.env.APP_URL;
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -24,7 +20,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return jsonOk({
-        message: "If that email exists, a reset link has been prepared."
+        message: "If that email exists, a reset link would appear here in local/demo mode."
       });
     }
 
@@ -48,42 +44,8 @@ export async function POST(request: Request) {
 
     const resetLink = `${resolveBaseUrl(request)}/reset-password?token=${rawToken}`;
 
-    if (RESEND_API_KEY && RESEND_FROM_EMAIL) {
-      const emailResponse = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: RESEND_FROM_EMAIL,
-          to: user.email,
-          subject: "Reset your Qez password",
-          html: `<p>Hello ${user.name},</p><p>Reset your password here:</p><p><a href="${resetLink}">${resetLink}</a></p><p>This link expires in 1 hour.</p>`
-        })
-      });
-
-      if (emailResponse.ok) {
-        return jsonOk({
-          message: "Password reset link sent."
-        });
-      }
-
-      const resendError = (await emailResponse.json().catch(() => null)) as
-        | { message?: string; error?: string; name?: string }
-        | null;
-
-      const resendMessage =
-        resendError?.message ?? resendError?.error ?? "Email delivery failed at the provider.";
-
-      return jsonError(
-        `Password reset email could not be sent. ${resendMessage} Check RESEND_FROM_EMAIL and your verified Resend domain.`,
-        502
-      );
-    }
-
     return jsonOk({
-      message: "Password reset link prepared. Email delivery was unavailable, so use this local reset link:",
+      message: "Use this reset link to continue:",
       resetLink
     });
   } catch (error) {

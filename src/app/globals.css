@@ -1900,6 +1900,358 @@ ul {
   font-size: 0.92rem;
 }
 
+/* Brand refresh overrides */
+
+:root {
+  --bg: #09182f;
+  --panel: rgba(255, 255, 255, 0.12);
+  --panel-strong: rgba(11, 37, 74, 0.72);
+  --text: #f6fbff;
+  --muted: #bfd2ec;
+  --line: rgba(98, 181, 255, 0.18);
+  --brand: #f28a22;
+  --brand-dark: #e17118;
+  --accent: #16b6b2;
+  --success: #2fcf8b;
+  --success-soft: rgba(47, 207, 139, 0.16);
+  --error: #ff6f86;
+  --error-soft: rgba(255, 111, 134, 0.18);
+  --shadow: 0 24px 54px rgba(5, 25, 54, 0.18);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(circle at 6% 10%, rgba(82, 185, 255, 0.34), transparent 25%),
+    radial-gradient(circle at 88% 8%, rgba(32, 199, 183, 0.28), transparent 28%),
+    radial-gradient(circle at 72% 70%, rgba(242, 138, 34, 0.18), transparent 26%),
+    linear-gradient(140deg, #0c2444 0%, #123f78 38%, #126b8b 72%, #0f274b 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 26%),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08), transparent 24%);
+  opacity: 0.9;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  padding-top: 0.9rem;
+  background: linear-gradient(180deg, rgba(8, 27, 52, 0.62), rgba(8, 27, 52, 0));
+  border-bottom: 0;
+  backdrop-filter: blur(8px);
+}
+
+.site-header__inner {
+  min-height: 78px;
+  padding: 0.8rem 1rem;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 18px 40px rgba(8, 32, 69, 0.22);
+}
+
+.brand-lockup {
+  gap: 0.95rem;
+}
+
+.brand-lockup strong {
+  font-size: 1.3rem;
+  letter-spacing: -0.03em;
+}
+
+.brand-lockup small {
+  color: rgba(241, 249, 255, 0.76);
+  font-size: 0.82rem;
+}
+
+.brand-lockup__mark {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 10px 20px rgba(15, 82, 167, 0.18));
+}
+
+.site-nav {
+  gap: 0.55rem;
+  color: rgba(240, 249, 255, 0.78);
+}
+
+.site-nav a {
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.site-nav a:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.home-copy {
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background:
+    radial-gradient(circle at 16% 14%, rgba(255, 255, 255, 0.12), transparent 24%),
+    radial-gradient(circle at 88% 16%, rgba(242, 138, 34, 0.22), transparent 30%),
+    linear-gradient(145deg, rgba(14, 57, 109, 0.88), rgba(10, 39, 75, 0.82));
+  box-shadow: 0 28px 54px rgba(8, 39, 79, 0.22);
+}
+
+.home-card,
+.card,
+.auth-panel,
+.dashboard-card,
+.metric-card,
+.preview-card,
+.leaderboard-panel,
+.result-panel,
+.analytics-panel,
+.monitor-panel,
+.quiz-list-item,
+.question-editor {
+  border-color: rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
+    rgba(11, 37, 74, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.home-card {
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(18, 62, 117, 0.76), rgba(12, 41, 78, 0.72));
+  box-shadow: 0 20px 38px rgba(7, 36, 74, 0.16);
+}
+
+.home-card--accent {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(22, 182, 178, 0.22), transparent 28%),
+    linear-gradient(145deg, rgba(20, 124, 161, 0.82), rgba(14, 69, 124, 0.82));
+}
+
+.primary-link,
+.secondary-link,
+.primary-button,
+.secondary-button,
+.danger-button,
+.card,
+.dashboard-card,
+.preview-card,
+.metric-card,
+.home-card,
+.quiz-list-item,
+.leaderboard-row,
+.question-editor,
+.site-nav a {
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.primary-link,
+.primary-button {
+  background: linear-gradient(135deg, #ffb33c, var(--brand), #f17f1f);
+  box-shadow: 0 14px 30px rgba(241, 127, 31, 0.22);
+}
+
+.secondary-link,
+.secondary-button {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.home-card:hover,
+.card:hover,
+.dashboard-card:hover,
+.preview-card:hover,
+.metric-card:hover,
+.quiz-list-item:hover,
+.leaderboard-row:hover,
+.question-editor:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 42px rgba(8, 37, 70, 0.18);
+}
+
+.auth-panel-brand {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.12), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(22, 182, 178, 0.2), transparent 30%),
+    linear-gradient(145deg, rgba(13, 76, 132, 0.84), rgba(9, 42, 83, 0.82));
+}
+
+.auth-panel-form {
+  background: rgba(10, 41, 79, 0.82);
+}
+
+.dashboard-tabs {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.dashboard-tab--active {
+  background: linear-gradient(135deg, rgba(242, 138, 34, 0.34), rgba(74, 200, 242, 0.22));
+}
+
+.dashboard-hero {
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(22, 182, 178, 0.16), transparent 26%),
+    linear-gradient(135deg, rgba(16, 88, 138, 0.82), rgba(10, 39, 75, 0.8));
+}
+
+.dashboard-hero--webinar {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(242, 138, 34, 0.22), transparent 28%),
+    linear-gradient(135deg, rgba(12, 95, 123, 0.84), rgba(8, 48, 77, 0.82));
+}
+
+.dashboard-hero--admin {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(242, 138, 34, 0.18), transparent 26%),
+    linear-gradient(135deg, rgba(20, 76, 125, 0.84), rgba(8, 32, 69, 0.82));
+}
+
+.field input,
+.field textarea,
+.field select,
+.home-join-form input {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.reset-link-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reset-link-card span {
+  color: rgba(243, 249, 255, 0.8);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.reset-link-card a {
+  word-break: break-all;
+  color: #fff2cf;
+  font-weight: 700;
+}
+
+.brand-hero-mark {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.auth-panel-brand--admin {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(242, 138, 34, 0.2), transparent 30%),
+    linear-gradient(145deg, rgba(12, 59, 107, 0.84), rgba(6, 31, 66, 0.86));
+}
+
+.auth-switch--secondary a {
+  color: #ffd88a;
+}
+
+.admin-hero-card,
+.webinar-host-highlight,
+.webinar-room-spotlight,
+.profile-preview-card {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-hero-card {
+  min-width: 280px;
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.2rem;
+  border-radius: 24px;
+}
+
+.admin-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-list-item p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+}
+
+.admin-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: flex-end;
+  color: rgba(239, 247, 255, 0.74);
+}
+
+.question-badge,
+.pill--neutral {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pill--webinar {
+  background: rgba(242, 138, 34, 0.18);
+  color: #ffd59a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .primary-link,
+  .secondary-link,
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .card,
+  .dashboard-card,
+  .preview-card,
+  .metric-card,
+  .home-card,
+  .quiz-list-item,
+  .leaderboard-row,
+  .question-editor,
+  .site-nav a {
+    transition: none !important;
+  }
+}
+
 @media (max-width: 780px) {
   .site-header__inner,
   .page-shell,

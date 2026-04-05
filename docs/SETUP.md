@@ -98,6 +98,19 @@ Useful for:
 
 - sending password reset emails automatically
 
+### `ADMIN_EMAIL`
+
+Optional. If set together with `ADMIN_PASSWORD`, the first successful login at `/admin/login`
+with those exact credentials will create an `ADMIN` account automatically.
+
+### `ADMIN_PASSWORD`
+
+Optional. Used only for the first admin bootstrap flow at `/admin/login`.
+
+### `ADMIN_NAME`
+
+Optional display name for the bootstrapped admin account.
+
 ### `REDIS_URL`
 
 Useful later if we add:
