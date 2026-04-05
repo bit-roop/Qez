@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+  WEBINAR_HOST
+}
+
+enum QuizMode {
+  ACADEMIC
+  WEBINAR
+}
+
+enum QuizState {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  MCQ
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+}
+
+enum LeaderboardVisibility {
+  HIDDEN
+  TOP_10
+  FULL
+}
+
+enum SuspiciousEventType {
+  TAB_SWITCH
+  RIGHT_CLICK
+  DEVTOOLS_ATTEMPT
+  FULLSCREEN_EXIT
+  COPY_ATTEMPT
+  OTHER
+}
+
+model User {
+  id                BigInt          @id @default(autoincrement())
+  name              String
+  email             String          @unique
+  passwordHash      String
+  role              UserRole
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  createdQuizzes    Quiz[]          @relation("QuizOwner")
+  attempts          Attempt[]
+  webinarPoints     WebinarResult[]
+}
+
+model Quiz {
+  id                    BigInt                  @id @default(autoincrement())
+  title                 String
+  description           String?
+  joinCode              String                  @unique
+  mode                  QuizMode
+  state                 QuizState               @default(DRAFT)
+  ownerId               BigInt
+  owner                 User                    @relation("QuizOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  startsAt              DateTime
+  endsAt                DateTime
+  allowLeaderboard      Boolean                 @default(false)
+  leaderboardVisibility LeaderboardVisibility   @default(HIDDEN)
+  showResultsToStudents Boolean                 @default(false)
+  shuffleQuestions      Boolean                 @default(false)
+  shuffleOptions        Boolean                 @default(false)
+  negativeMarking       Decimal?                @db.Decimal(5, 2)
+  maxAttempts           Int                     @default(1)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  questions             Question[]
+  attempts              Attempt[]
+  webinarResults        WebinarResult[]
+
+  @@index([ownerId])
+  @@index([state, startsAt, endsAt])
+}
+
+model Question {
+  id                BigInt            @id @default(autoincrement())
+  quizId            BigInt
+  quiz              Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  prompt            String
+  explanation       String?
+  questionType      QuestionType      @default(MCQ)
+  difficulty        DifficultyLevel   @default(MEDIUM)
+  timeLimitSeconds  Int
+  displayOrder      Int
+  correctOptionKey  String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  options           QuestionOption[]
+  responses         Response[]
+
+  @@unique([quizId, displayOrder])
+  @@index([quizId])
+}
+
+model QuestionOption {
+  id          BigInt    @id @default(autoincrement())
+  questionId  BigInt
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionKey   String
+  optionText  String
+
+  @@unique([questionId, optionKey])
+  @@index([questionId])
+}
+
+model Attempt {
+  id                BigInt           @id @default(autoincrement())
+  userId            BigInt
+  quizId            BigInt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz              Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  status            AttemptStatus    @default(IN_PROGRESS)
+  totalScore        Int              @default(0)
+  totalTimeSeconds  Int              @default(0)
+  warningLevel      Int              @default(0)
+  tabSwitchCount    Int              @default(0)
+  suspicious        Boolean          @default(false)
+  startedAt         DateTime         @default(now())
+  submittedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  responses         Response[]
+  suspiciousEvents  SuspiciousEvent[]
+
+  @@unique([userId, quizId])
+  @@index([quizId])
+  @@index([userId, quizId])
+}
+
+model Response {
+  id               BigInt    @id @default(autoincrement())
+  attemptId        BigInt
+  questionId       BigInt
+  attempt          Attempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         Question  @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOptionKey String
+  isCorrect        Boolean
+  timeTakenSeconds Int
+  createdAt        DateTime  @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+model SuspiciousEvent {
+  id          BigInt               @id @default(autoincrement())
+  attemptId   BigInt
+  attempt     Attempt              @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  eventType   SuspiciousEventType
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+
+  @@index([attemptId, createdAt])
+}
+
+model WebinarResult {
+  id            BigInt    @id @default(autoincrement())
+  quizId         BigInt
+  userId         BigInt
+  quiz           Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rank           Int
+  pointsAwarded  Int
+  createdAt      DateTime  @default(now())
+
+  @@unique([quizId, userId])
+  @@index([quizId, rank])
+}
