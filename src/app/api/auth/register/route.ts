@@ -51,4 +51,3 @@ export async function POST(request: Request) {
     return jsonError("Unable to register user right now.", 500);
   }
 }
-

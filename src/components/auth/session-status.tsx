@@ -8,6 +8,7 @@ import {
   loadSession,
   subscribeToSessionChanges
 } from "@/lib/client-auth";
+import { getAvatarPreset, getInitials } from "@/lib/profile";
 import { AuthSession } from "@/types/client-auth";
 
 export function SessionStatus() {
@@ -34,9 +35,14 @@ export function SessionStatus() {
     );
   }
 
+  const avatar = getAvatarPreset(session.user.avatarKey);
+
   return (
     <div className="session-status">
-      <Link className="session-chip" href={getDefaultDashboardPath(session.user.role)}>
+      <Link className="session-chip session-chip--profile" href="/settings">
+        <span className="session-avatar" style={{ background: avatar.accent }}>
+          {getInitials(session.user.name)}
+        </span>
         <span>{session.user.name}</span>
         <strong>{session.user.role.replaceAll("_", " ")}</strong>
       </Link>

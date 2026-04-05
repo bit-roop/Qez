@@ -70,7 +70,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         data.user.role === "TEACHER" || data.user.role === "ADMIN"
           ? "/dashboard/teacher"
           : data.user.role === "WEBINAR_HOST"
-            ? "/dashboard/teacher"
+            ? "/dashboard/host"
             : "/dashboard/student";
 
       router.push(roleRoute);

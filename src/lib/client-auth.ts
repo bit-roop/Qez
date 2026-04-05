@@ -4,6 +4,7 @@ import { AuthSession, ClientUser } from "@/types/client-auth";
 
 const AUTH_STORAGE_KEY = "qez.auth.session";
 const AUTH_SESSION_EVENT = "qez-auth-session-changed";
+const PROFILE_PREFS_KEY = "qez.profile.preferences";
 
 function emitSessionChange() {
   if (typeof window === "undefined") {
@@ -25,11 +26,42 @@ export function loadSession(): AuthSession | null {
   }
 
   try {
-    return JSON.parse(raw) as AuthSession;
+    const session = JSON.parse(raw) as AuthSession;
+    const profilePrefs = loadProfilePreferences();
+
+    return {
+      ...session,
+      user: {
+        ...session.user,
+        ...profilePrefs
+      }
+    };
   } catch {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;
   }
+}
+
+export function loadProfilePreferences() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PROFILE_PREFS_KEY);
+    return raw
+      ? (JSON.parse(raw) as Pick<ClientUser, "avatarKey" | "bio" | "institution">)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveProfilePreferences(
+  preferences: Pick<ClientUser, "avatarKey" | "bio" | "institution">
+) {
+  window.localStorage.setItem(PROFILE_PREFS_KEY, JSON.stringify(preferences));
+  emitSessionChange();
 }
 
 export function saveSession(session: AuthSession) {

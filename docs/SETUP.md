@@ -158,3 +158,26 @@ The forgot-password flow now works in two modes:
 
 - If `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set, it sends email automatically
 - If they are not set, the API returns the reset link directly for local/demo use
+
+## 9. Vercel Deployment Checklist
+
+Before deploying to Vercel, make sure these environment variables are added in the Vercel project settings:
+
+```env
+DATABASE_URL="your-neon-postgres-url"
+JWT_SECRET="your-long-random-secret"
+APP_URL="https://your-vercel-domain.vercel.app"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+NEXT_PUBLIC_GOOGLE_AUTH_ENABLED="true"
+RESEND_API_KEY="your-resend-api-key"
+RESEND_FROM_EMAIL="your-from-email"
+```
+
+Notes:
+
+- `APP_URL` must match your deployed Vercel URL in production.
+- In Google Cloud Console, add this production redirect URI:
+  - `https://your-vercel-domain.vercel.app/api/auth/google/callback`
+- If Google sign-in works locally but not on Vercel, the redirect URI mismatch is usually the cause.
+- The build uses `prisma generate && next build`, so `DATABASE_URL` must be present in Vercel during build time.
