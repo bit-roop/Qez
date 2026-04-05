@@ -161,6 +161,9 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
                   <Link className="primary-button" href={`/quizzes/${quiz.id}/host`}>
                     Live control
                   </Link>
+                  <Link className="secondary-button" href={`/quizzes/${quiz.id}/certificates`}>
+                    Winners
+                  </Link>
                   <Link className="secondary-button" href={`/quizzes/${quiz.id}/analytics`}>
                     Analytics
                   </Link>

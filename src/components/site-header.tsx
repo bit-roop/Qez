@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BrandMark } from "@/components/brand-mark";
 import { SessionStatus } from "@/components/auth/session-status";
 import { loadSession, subscribeToSessionChanges } from "@/lib/client-auth";
 import { AuthSession } from "@/types/client-auth";
@@ -62,7 +62,16 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link className="brand-lockup" href="/">
-          <BrandMark className="brand-lockup__mark" />
+          <span className="brand-lockup__mark brand-lockup__mark--image">
+            <Image
+              alt="Qez logo"
+              className="brand-lockup__logo-image"
+              height={56}
+              priority
+              src="/qez-logo.png"
+              width={56}
+            />
+          </span>
           <span>
             <strong>Qez</strong>
             <small>Quizzes &amp; Tests Made Easy</small>

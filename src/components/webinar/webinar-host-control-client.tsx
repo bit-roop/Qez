@@ -269,6 +269,12 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
             <Link className="secondary-button" href={`/quizzes/${quizId}/leaderboard`}>
               Open public leaderboard
             </Link>
+            <Link className="secondary-button" href={`/quizzes/${quizId}/certificates`}>
+              Winner certificates
+            </Link>
+            <a className="secondary-button" href={`/api/quizzes/${quizId}/winners/export`}>
+              Export winners CSV
+            </a>
             <Link className="secondary-button" href={`/quizzes/${quizId}/analytics`}>
               Open analytics
             </Link>

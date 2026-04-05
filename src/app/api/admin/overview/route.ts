@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return jsonError("Unauthorized.", 401);
     }
 
-    const [usersCount, quizzesCount, attemptsCount, suspiciousAttemptsCount, recentUsers, recentQuizzes] =
+    const [usersCount, quizzesCount, attemptsCount, suspiciousAttemptsCount, recentUsers, recentQuizzes, roleCounts, quizModeCounts] =
       await Promise.all([
         prisma.user.count(),
         prisma.quiz.count(),
@@ -54,6 +54,18 @@ export async function GET(request: NextRequest) {
               }
             }
           }
+        }),
+        prisma.user.groupBy({
+          by: ["role"],
+          _count: {
+            role: true
+          }
+        }),
+        prisma.quiz.groupBy({
+          by: ["mode"],
+          _count: {
+            mode: true
+          }
         })
       ]);
 
@@ -64,6 +76,8 @@ export async function GET(request: NextRequest) {
         attemptsCount,
         suspiciousAttemptsCount
       }),
+      roleCounts: serializeBigInt(roleCounts),
+      quizModeCounts: serializeBigInt(quizModeCounts),
       recentUsers: serializeBigInt(recentUsers),
       recentQuizzes: serializeBigInt(recentQuizzes)
     });

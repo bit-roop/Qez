@@ -40,6 +40,14 @@ type QuizAnalyticsData = {
     accuracyPercent: number;
     avgTimeSeconds: number;
   }[];
+  scoreBands: {
+    label: string;
+    count: number;
+  }[];
+  warningBands: {
+    label: string;
+    count: number;
+  }[];
 };
 
 type QuizAnalyticsClientProps = {
@@ -297,6 +305,76 @@ export function QuizAnalyticsClient({ quizId }: QuizAnalyticsClientProps) {
                 </div>
                 <strong>{segment.avgTimeSeconds}s</strong>
               </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="analytics-grid analytics-grid--charts">
+        <article className="analytics-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Score Spread</span>
+              <h2>Attempt distribution</h2>
+            </div>
+          </div>
+          <div className="analytics-donut-grid">
+            {data.scoreBands.map((band) => (
+              <article className="analytics-donut-card" key={band.label}>
+                <div
+                  className="analytics-ring analytics-ring--compact"
+                  style={{
+                    ["--ring-value" as string]: `${
+                      data.quiz.submittedAttempts > 0
+                        ? (band.count / data.quiz.submittedAttempts) * 100
+                        : 0
+                    }%`
+                  }}
+                >
+                  <div>
+                    <strong>{band.count}</strong>
+                    <span>attempts</span>
+                  </div>
+                </div>
+                <h3>{band.label}</h3>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="analytics-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Integrity Mix</span>
+              <h2>Warning level distribution</h2>
+            </div>
+          </div>
+          <div className="analytics-donut-grid">
+            {data.warningBands.map((band) => (
+              <article className="analytics-donut-card" key={band.label}>
+                <div
+                  className={`analytics-ring analytics-ring--compact ${
+                    band.label === "Flagged"
+                      ? "analytics-ring--warning"
+                      : band.label === "Warned"
+                        ? "analytics-ring--time"
+                        : ""
+                  }`}
+                  style={{
+                    ["--ring-value" as string]: `${
+                      data.quiz.submittedAttempts > 0
+                        ? (band.count / data.quiz.submittedAttempts) * 100
+                        : 0
+                    }%`
+                  }}
+                >
+                  <div>
+                    <strong>{band.count}</strong>
+                    <span>attempts</span>
+                  </div>
+                </div>
+                <h3>{band.label}</h3>
+              </article>
             ))}
           </div>
         </article>
