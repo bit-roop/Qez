@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { QuizState } from "@prisma/client";
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { getAuthUserFromRequest } from "@/lib/auth";
-import { canAttemptQuiz } from "@/lib/permissions";
+import {
+  canAttemptQuiz,
+  describeAllowedParticipants,
+  isAllowedQuizParticipant
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 function parseQuizId(rawQuizId: string) {
@@ -45,6 +49,8 @@ export async function GET(
         allowLeaderboard: true,
         leaderboardVisibility: true,
         showResultsToStudents: true,
+        allowedParticipantEmails: true,
+        allowedEmailDomains: true,
         owner: {
           select: {
             name: true,
@@ -82,6 +88,22 @@ export async function GET(
 
     if (!canAttemptQuiz(user.role, quiz.mode)) {
       return jsonError("Your role cannot attempt this quiz.", 403);
+    }
+
+    if (
+      !isAllowedQuizParticipant(
+        user.email,
+        quiz.allowedParticipantEmails,
+        quiz.allowedEmailDomains
+      )
+    ) {
+      return jsonError(
+        `You are not on the allowed participant list for this quiz. ${describeAllowedParticipants(
+          quiz.allowedParticipantEmails,
+          quiz.allowedEmailDomains
+        )}`,
+        403
+      );
     }
 
     const existingAttempt = await prisma.attempt.findUnique({

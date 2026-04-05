@@ -17,6 +17,18 @@ export const createQuizSchema = z
     showResultsToStudents: z.boolean().default(false),
     shuffleQuestions: z.boolean().default(false),
     shuffleOptions: z.boolean().default(false),
+    allowedParticipantEmails: z.array(z.string().trim().email()).max(500).default([]),
+    allowedEmailDomains: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(3)
+          .max(120)
+          .transform((value) => value.replace(/^[@.]+/, "").toLowerCase())
+      )
+      .max(100)
+      .default([]),
     negativeMarking: z.number().min(0).max(100).optional(),
     questions: z
       .array(
@@ -60,4 +72,16 @@ export const createQuizSchema = z
   }, {
     message: "Each question must have a correct option that matches one of its options.",
     path: ["questions"]
+  })
+  .refine((value) => {
+    return new Set(value.allowedParticipantEmails.map((email) => email.toLowerCase())).size === value.allowedParticipantEmails.length;
+  }, {
+    message: "Allowed participant emails must be unique.",
+    path: ["allowedParticipantEmails"]
+  })
+  .refine((value) => {
+    return new Set(value.allowedEmailDomains).size === value.allowedEmailDomains.length;
+  }, {
+    message: "Allowed email domains must be unique.",
+    path: ["allowedEmailDomains"]
   });

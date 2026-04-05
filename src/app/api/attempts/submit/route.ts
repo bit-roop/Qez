@@ -2,7 +2,11 @@ import { AttemptStatus, QuizState } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { getAuthUserFromRequest } from "@/lib/auth";
-import { canAttemptQuiz } from "@/lib/permissions";
+import {
+  canAttemptQuiz,
+  describeAllowedParticipants,
+  isAllowedQuizParticipant
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { attemptSubmissionSchema } from "@/lib/validators/attempt";
 
@@ -44,6 +48,8 @@ export async function POST(request: NextRequest) {
         startsAt: true,
         endsAt: true,
         negativeMarking: true,
+        allowedParticipantEmails: true,
+        allowedEmailDomains: true,
         questions: {
           select: {
             id: true,
@@ -59,6 +65,22 @@ export async function POST(request: NextRequest) {
 
     if (!canAttemptQuiz(user.role, quiz.mode)) {
       return jsonError("Your role cannot submit this quiz.", 403);
+    }
+
+    if (
+      !isAllowedQuizParticipant(
+        user.email,
+        quiz.allowedParticipantEmails,
+        quiz.allowedEmailDomains
+      )
+    ) {
+      return jsonError(
+        `You are not on the allowed participant list for this quiz. ${describeAllowedParticipants(
+          quiz.allowedParticipantEmails,
+          quiz.allowedEmailDomains
+        )}`,
+        403
+      );
     }
 
     const now = new Date();

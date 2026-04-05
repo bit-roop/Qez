@@ -128,6 +128,8 @@ export async function POST(request: NextRequest) {
       showResultsToStudents: parsed.data.showResultsToStudents,
       shuffleQuestions: parsed.data.shuffleQuestions,
       shuffleOptions: parsed.data.shuffleOptions,
+      allowedParticipantEmails: parsed.data.allowedParticipantEmails,
+      allowedEmailDomains: parsed.data.allowedEmailDomains,
       negativeMarking:
         parsed.data.negativeMarking !== undefined
           ? new Prisma.Decimal(parsed.data.negativeMarking)

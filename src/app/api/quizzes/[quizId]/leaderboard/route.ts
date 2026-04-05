@@ -98,8 +98,10 @@ export async function GET(
     return jsonOk({
       quiz: serializeBigInt(quiz),
       entries: serializeBigInt(visibleEntries),
+      topPerformers: serializeBigInt(ranked.slice(0, 3)),
       myEntry: serializeBigInt(myEntry),
-      totalParticipants: ranked.length
+      totalParticipants: ranked.length,
+      lastUpdatedAt: new Date().toISOString()
     });
   } catch (error) {
     console.error("leaderboard error", error);

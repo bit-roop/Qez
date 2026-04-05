@@ -83,7 +83,11 @@ export function subscribeToSessionChanges(callback: () => void) {
 }
 
 export function getDefaultDashboardPath(role: ClientUser["role"]) {
-  if (role === "TEACHER" || role === "ADMIN" || role === "WEBINAR_HOST") {
+  if (role === "WEBINAR_HOST") {
+    return "/dashboard/host";
+  }
+
+  if (role === "TEACHER" || role === "ADMIN") {
     return "/dashboard/teacher";
   }
 

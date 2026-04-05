@@ -83,6 +83,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   const isLogin = mode === "login";
+  const googleEnabled = Boolean(
+    process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true" ||
+      process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "1"
+  );
 
   return (
     <div className="auth-shell">
@@ -109,6 +113,14 @@ export function AuthForm({ mode }: AuthFormProps) {
       <section className="auth-panel auth-panel-form">
         <span className="eyebrow">{isLogin ? "Login" : "Register"}</span>
         <h2>{isLogin ? "Sign in" : "Create your account"}</h2>
+        {googleEnabled ? (
+          <div className="auth-social-block">
+            <a className="secondary-button auth-social-button" href="/api/auth/google/start">
+              Continue with Google
+            </a>
+            <span className="inline-note">Google sign-in creates a student account by default.</span>
+          </div>
+        ) : null}
         <form className="auth-form" onSubmit={handleSubmit}>
           {!isLogin ? (
             <label className="field">
@@ -153,6 +165,11 @@ export function AuthForm({ mode }: AuthFormProps) {
             {isLogin ? "Register" : "Login"}
           </Link>
         </p>
+        {isLogin ? (
+          <p className="auth-switch">
+            <Link href="/forgot-password">Forgot password?</Link>
+          </p>
+        ) : null}
       </section>
     </div>
   );

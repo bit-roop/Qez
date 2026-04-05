@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { getAuthUserFromRequest } from "@/lib/auth";
-import { canAttemptQuiz } from "@/lib/permissions";
+import {
+  canAttemptQuiz,
+  describeAllowedParticipants,
+  isAllowedQuizParticipant
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 const joinQuizSchema = z.object({
@@ -40,6 +44,8 @@ export async function POST(request: NextRequest) {
         allowLeaderboard: true,
         leaderboardVisibility: true,
         showResultsToStudents: true,
+        allowedParticipantEmails: true,
+        allowedEmailDomains: true,
         owner: {
           select: {
             name: true,
@@ -64,6 +70,22 @@ export async function POST(request: NextRequest) {
 
     if (quiz.state !== "ACTIVE") {
       return jsonError("This quiz is not active yet. Ask your teacher or host to activate it.", 409);
+    }
+
+    if (
+      !isAllowedQuizParticipant(
+        user.email,
+        quiz.allowedParticipantEmails,
+        quiz.allowedEmailDomains
+      )
+    ) {
+      return jsonError(
+        `You are not on the allowed participant list for this quiz. ${describeAllowedParticipants(
+          quiz.allowedParticipantEmails,
+          quiz.allowedEmailDomains
+        )}`,
+        403
+      );
     }
 
     return jsonOk({

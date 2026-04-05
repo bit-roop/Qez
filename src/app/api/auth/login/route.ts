@@ -21,6 +21,10 @@ export async function POST(request: Request) {
       return jsonError("Invalid email or password.", 401);
     }
 
+    if (!user.passwordHash) {
+      return jsonError("This account uses Google sign-in. Continue with Google instead.", 401);
+    }
+
     const passwordMatches = await comparePassword(password, user.passwordHash);
 
     if (!passwordMatches) {
@@ -48,4 +52,3 @@ export async function POST(request: Request) {
     return jsonError("Unable to login right now.", 500);
   }
 }
-

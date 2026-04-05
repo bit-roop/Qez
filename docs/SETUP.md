@@ -60,15 +60,43 @@ npm run dev
 
 ## 5. Optional Variables
 
-These are not required for the current milestone.
+These are optional, but some new features use them.
 
-### `NEXT_PUBLIC_APP_URL`
+### `APP_URL`
 
 Useful later for:
 
 - links
-- deployment config
-- email callbacks
+- Google OAuth callback
+- password reset links
+
+### `GOOGLE_CLIENT_ID`
+
+Required if you want:
+
+- Google sign-in
+
+### `GOOGLE_CLIENT_SECRET`
+
+Required if you want:
+
+- Google sign-in
+
+### `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`
+
+Set to `true` to show the Google sign-in button in the UI after you configure Google OAuth.
+
+### `RESEND_API_KEY`
+
+Useful for:
+
+- sending password reset emails automatically
+
+### `RESEND_FROM_EMAIL`
+
+Useful for:
+
+- sending password reset emails automatically
 
 ### `REDIS_URL`
 
@@ -76,14 +104,6 @@ Useful later if we add:
 
 - fast leaderboard caching
 - websocket/pubsub features
-
-### `RESEND_API_KEY`
-
-Useful later for:
-
-- email verification
-- password reset
-- invitations
 
 ### `SENTRY_DSN`
 
@@ -101,7 +121,7 @@ You do not currently need:
 - Firebase key
 - OAuth client keys
 
-Those are only needed if we later add AI features, payments, or social login.
+Those are only needed if we later add AI features, payments, or more social login providers.
 
 ## 7. Recommended Minimum For This Project Phase
 
@@ -118,3 +138,23 @@ That is enough to build and test:
 - quiz creation
 - quiz listing
 - quiz update
+
+## 8. New Auth Feature Notes
+
+### Google sign-in
+
+To enable Google sign-in, add:
+
+```env
+APP_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+NEXT_PUBLIC_GOOGLE_AUTH_ENABLED="true"
+```
+
+### Forgot password
+
+The forgot-password flow now works in two modes:
+
+- If `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set, it sends email automatically
+- If they are not set, the API returns the reset link directly for local/demo use

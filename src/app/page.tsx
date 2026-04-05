@@ -92,6 +92,7 @@ export default function HomePage() {
 
   const dashboardPath = getDefaultDashboardPath(session.user.role);
   const isStudent = session.user.role === "STUDENT";
+  const isHost = session.user.role === "WEBINAR_HOST";
 
   return (
     <main className="page-shell home-shell">
@@ -130,6 +131,26 @@ export default function HomePage() {
                 <p>See joined quizzes, leaderboards, and your quiz tools.</p>
                 <Link className="secondary-button" href={dashboardPath}>
                   Go to student dashboard
+                </Link>
+              </article>
+            </>
+          ) : isHost ? (
+            <>
+              <article className="home-card home-card--accent">
+                <span className="question-badge">Host Control</span>
+                <h2>Open the live event room</h2>
+                <p>Launch webinar quizzes, watch rankings, and reveal winners on stage.</p>
+                <Link className="primary-button" href={dashboardPath}>
+                  Open host dashboard
+                </Link>
+              </article>
+
+              <article className="home-card">
+                <span className="question-badge">Quick Action</span>
+                <h2>Manage webinar rounds</h2>
+                <p>See active events, switch quiz states, and jump straight into the host screen.</p>
+                <Link className="secondary-button" href={dashboardPath}>
+                  Go to host workspace
                 </Link>
               </article>
             </>

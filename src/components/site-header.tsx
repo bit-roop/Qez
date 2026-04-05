@@ -4,6 +4,7 @@ import { SessionStatus } from "@/components/auth/session-status";
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/dashboard/teacher", label: "Teacher" },
+  { href: "/dashboard/host", label: "Host" },
   { href: "/dashboard/student", label: "Student" }
 ];
 

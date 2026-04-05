@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/client-auth";
 
@@ -143,6 +144,11 @@ export function SuspiciousAttemptsClient({ quizId }: SuspiciousAttemptsClientPro
                   </div>
                 ))}
               </div>
+              <div className="hero-actions">
+                <Link className="secondary-button" href={`/quizzes/${quizId}/attempts/${attempt.id}`}>
+                  Review full attempt
+                </Link>
+              </div>
             </article>
           ))
         )}
@@ -150,4 +156,3 @@ export function SuspiciousAttemptsClient({ quizId }: SuspiciousAttemptsClientPro
     </section>
   );
 }
-

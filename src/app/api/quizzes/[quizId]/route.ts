@@ -16,7 +16,18 @@ const partialQuizUpdateSchema = z
     endsAt: z.coerce.date().optional(),
     allowLeaderboard: z.boolean().optional(),
     leaderboardVisibility: z.enum(["HIDDEN", "TOP_10", "FULL"]).optional(),
-    showResultsToStudents: z.boolean().optional()
+    showResultsToStudents: z.boolean().optional(),
+    allowedParticipantEmails: z.array(z.string().trim().email()).optional(),
+    allowedEmailDomains: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(3)
+          .max(120)
+          .transform((value) => value.replace(/^[@.]+/, "").toLowerCase())
+      )
+      .optional()
   })
   .refine(
     (value) =>
@@ -161,7 +172,9 @@ export async function PATCH(
             leaderboardVisibility: parsed.data.leaderboardVisibility,
             showResultsToStudents: parsed.data.showResultsToStudents,
             shuffleQuestions: parsed.data.shuffleQuestions,
-            shuffleOptions: parsed.data.shuffleOptions
+            shuffleOptions: parsed.data.shuffleOptions,
+            allowedParticipantEmails: parsed.data.allowedParticipantEmails,
+            allowedEmailDomains: parsed.data.allowedEmailDomains
           }
         });
 

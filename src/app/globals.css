@@ -792,6 +792,42 @@ ul {
   font-size: 0.9rem;
 }
 
+.auth-social-block {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.auth-social-button {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.upload-hint-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(162, 181, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.upload-hint-card strong {
+  color: #f4f7ff;
+}
+
+.inline-code-block {
+  display: block;
+  margin-top: 0.45rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(11, 18, 33, 0.88);
+  border: 1px solid rgba(162, 181, 255, 0.1);
+  color: #d7e6ff;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9rem;
+}
+
 .question-order-badge {
   display: inline-flex;
   margin-bottom: 0.5rem;
@@ -1462,6 +1498,148 @@ ul {
   padding: 2rem;
 }
 
+.dashboard-hero--webinar {
+  background:
+    radial-gradient(circle at top left, rgba(255, 107, 74, 0.2), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255, 204, 102, 0.16), transparent 30%),
+    linear-gradient(135deg, rgba(36, 16, 30, 0.92), rgba(22, 18, 45, 0.9) 52%, rgba(9, 18, 33, 0.9));
+}
+
+.webinar-host-highlight,
+.webinar-focus-card,
+.webinar-podium-card,
+.webinar-room-spotlight {
+  border: 1px solid rgba(255, 188, 112, 0.16);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.26);
+}
+
+.webinar-host-highlight {
+  min-width: 280px;
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.2rem;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 107, 74, 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(34, 18, 34, 0.92), rgba(20, 17, 38, 0.92));
+}
+
+.webinar-host-highlight strong,
+.webinar-room-spotlight strong {
+  font-size: 1.35rem;
+}
+
+.webinar-host-highlight span:last-of-type,
+.webinar-room-spotlight span {
+  color: #f3d9c6;
+}
+
+.webinar-board-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.18fr);
+  gap: 1rem;
+}
+
+.webinar-focus-card {
+  background:
+    radial-gradient(circle at top left, rgba(255, 107, 74, 0.18), transparent 28%),
+    linear-gradient(180deg, rgba(32, 19, 34, 0.94), rgba(14, 18, 34, 0.94));
+}
+
+.webinar-focus-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.webinar-focus-meta,
+.webinar-shortcut-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.webinar-quiz-card {
+  background:
+    radial-gradient(circle at top right, rgba(255, 107, 74, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(25, 20, 39, 0.92), rgba(12, 19, 35, 0.92));
+}
+
+.webinar-room-shell {
+  gap: 1.25rem;
+}
+
+.webinar-room-hero {
+  background:
+    radial-gradient(circle at top left, rgba(255, 107, 74, 0.2), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 206, 86, 0.16), transparent 28%),
+    linear-gradient(180deg, rgba(28, 17, 34, 0.96), rgba(12, 20, 37, 0.92));
+}
+
+.webinar-room-spotlight {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.25rem;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 208, 115, 0.12), transparent 32%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.webinar-podium-panel {
+  overflow: hidden;
+}
+
+.webinar-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.webinar-podium--revealed .webinar-podium-card {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.webinar-podium-card {
+  display: grid;
+  gap: 0.5rem;
+  min-height: 200px;
+  padding: 1.35rem 1.1rem;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(36, 20, 44, 0.94), rgba(18, 19, 40, 0.92));
+  transform: translateY(18px);
+  opacity: 0.9;
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+
+.webinar-podium-card--1 {
+  min-height: 260px;
+  background:
+    radial-gradient(circle at top center, rgba(255, 214, 111, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(70, 38, 32, 0.96), rgba(30, 18, 27, 0.94));
+}
+
+.webinar-podium-card--2 {
+  min-height: 230px;
+}
+
+.webinar-podium-card--3 {
+  min-height: 210px;
+}
+
+.webinar-podium-rank {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff2d6;
+  font-weight: 800;
+}
+
 .dashboard-grid,
 .student-preview-grid {
   grid-template-columns: 1.35fr 0.95fr;
@@ -1640,6 +1818,7 @@ ul {
   .hero-strip,
   .stats-grid,
   .dashboard-grid,
+  .webinar-board-grid,
   .home-grid,
   .attempt-shell,
   .student-preview-grid,
@@ -1662,6 +1841,7 @@ ul {
   .field-grid--triple,
   .leaderboard-panel--hero,
   .leaderboard-row,
+  .webinar-podium,
   .hero,
   .auth-shell,
   .quiz-detail-grid {

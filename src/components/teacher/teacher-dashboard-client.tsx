@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import { clearSession, apiFetch } from "@/lib/client-auth";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { clearSession, apiFetch, getStoredToken } from "@/lib/client-auth";
 import { AuthSession } from "@/types/client-auth";
 
 type TeacherQuiz = {
@@ -15,6 +15,7 @@ type TeacherQuiz = {
   startsAt: string;
   endsAt: string;
   allowLeaderboard: boolean;
+  showResultsToStudents: boolean;
   _count: {
     questions: number;
     attempts: number;
@@ -43,6 +44,19 @@ type DeleteQuizResponse = {
   message: string;
 };
 
+type DuplicateQuizResponse = {
+  quiz: TeacherQuiz;
+  message: string;
+};
+
+type ResultReleaseResponse = {
+  quiz: {
+    id: string;
+    showResultsToStudents: boolean;
+  };
+  message: string;
+};
+
 const emptyQuestion = (displayOrder: number) => ({
   prompt: "",
   explanation: "",
@@ -57,6 +71,35 @@ const emptyQuestion = (displayOrder: number) => ({
     { optionKey: "D", optionText: "" }
   ]
 });
+
+function extractEmails(rawText: string) {
+  const matches = rawText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+  return [...new Set(matches.map((email) => email.trim().toLowerCase()))];
+}
+
+function parseDomainRules(rawText: string) {
+  return [
+    ...new Set(
+      rawText
+        .split(/[\n,; ]+/)
+        .map((item) => item.trim().toLowerCase().replace(/^[@.]+/, ""))
+        .filter(Boolean)
+    )
+  ];
+}
+
+function downloadRosterTemplate() {
+  const csv = "name,email\nAlice Student,alice@srmist.edu.in\nBob Student,bob@gmail.com\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "qez-roster-template.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
 
 export function TeacherDashboardClient({ session }: TeacherDashboardClientProps) {
   const [activePanel, setActivePanel] = useState<"create" | "library">(() => {
@@ -74,6 +117,10 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState([emptyQuestion(1)]);
+  const [allowedEmailsInput, setAllowedEmailsInput] = useState("");
+  const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
+  const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
+  const [uploadedRosterFileName, setUploadedRosterFileName] = useState<string | null>(null);
 
   const quizStats = {
     total: quizzes.length,
@@ -148,6 +195,81 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       setMessage(data.message);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to delete quiz.");
+    }
+  }
+
+  async function duplicateQuiz(quizId: string, title: string) {
+    setError(null);
+    setMessage(null);
+
+    try {
+      const data = await apiFetch<DuplicateQuizResponse>(`/api/quizzes/${quizId}/duplicate`, {
+        method: "POST"
+      });
+
+      setQuizzes((current) => [data.quiz, ...current]);
+      setMessage(data.message);
+      setActivePanel("library");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to duplicate quiz.");
+    }
+  }
+
+  async function toggleResultRelease(quizId: string, currentVisibility: boolean) {
+    setError(null);
+    setMessage(null);
+
+    try {
+      const data = await apiFetch<ResultReleaseResponse>(`/api/quizzes/${quizId}/result`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          showResultsToStudents: !currentVisibility
+        })
+      });
+
+      setQuizzes((current) =>
+        current.map((quiz) =>
+          quiz.id === quizId
+            ? { ...quiz, showResultsToStudents: data.quiz.showResultsToStudents }
+            : quiz
+        )
+      );
+      setMessage(data.message);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error ? caughtError.message : "Unable to update result visibility."
+      );
+    }
+  }
+
+  async function exportAttemptsCsv(quizId: string, title: string) {
+    setError(null);
+    setMessage(null);
+
+    try {
+      const token = getStoredToken();
+      const response = await fetch(`/api/analytics/quizzes/${quizId}/export`, {
+        method: "GET",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Unable to export quiz attempts.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-attempts.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setMessage(`Exported attempts CSV for "${title}".`);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to export attempts.");
     }
   }
 
@@ -229,6 +351,32 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     setDraggedQuestionIndex(null);
   }
 
+  async function handleRosterUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const isCsvLike = file.name.toLowerCase().endsWith(".csv") || file.name.toLowerCase().endsWith(".txt");
+
+    if (!isCsvLike) {
+      setError("Upload a CSV file or an Excel-exported CSV roster with student emails.");
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const emails = extractEmails(text);
+      setUploadedRosterEmails(emails);
+      setUploadedRosterFileName(file.name);
+      setMessage(`Imported ${emails.length} allowed participant emails from ${file.name}.`);
+      setError(null);
+    } catch {
+      setError("Unable to read that roster file.");
+    }
+  }
+
   async function handleCreateQuiz(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -237,6 +385,9 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     const form = event.currentTarget;
 
     const formData = new FormData(form);
+    const allowedParticipantEmails = [
+      ...new Set([...uploadedRosterEmails, ...extractEmails(allowedEmailsInput)])
+    ];
     const payload = {
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
@@ -248,6 +399,8 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       showResultsToStudents: formData.get("showResultsToStudents") === "on",
       shuffleQuestions: formData.get("shuffleQuestions") === "on",
       shuffleOptions: formData.get("shuffleOptions") === "on",
+      allowedParticipantEmails,
+      allowedEmailDomains: parseDomainRules(allowedDomainsInput),
       questions
     };
 
@@ -259,6 +412,10 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
 
       setQuizzes((current) => [data.quiz, ...current]);
       setQuestions([emptyQuestion(1)]);
+      setAllowedEmailsInput("");
+      setAllowedDomainsInput("");
+      setUploadedRosterEmails([]);
+      setUploadedRosterFileName(null);
       form.reset();
       setMessage(`Quiz created successfully. Join code: ${data.quiz.joinCode}`);
     } catch (caughtError) {
@@ -394,6 +551,53 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                 <option value="FULL">Full</option>
               </select>
             </label>
+
+            <div className="two-column-grid">
+              <label className="field">
+                <span>Allowed participant emails</span>
+                <textarea
+                  onChange={(event) => setAllowedEmailsInput(event.target.value)}
+                  placeholder="Paste student emails here, separated by commas or new lines"
+                  rows={4}
+                  value={allowedEmailsInput}
+                />
+              </label>
+
+              <label className="field">
+                <span>Allowed email domains</span>
+                <textarea
+                  onChange={(event) => setAllowedDomainsInput(event.target.value)}
+                  placeholder="Example: srmist.edu.in, gmail.com"
+                  rows={4}
+                  value={allowedDomainsInput}
+                />
+              </label>
+            </div>
+
+            <label className="field">
+              <span>Roster CSV upload</span>
+              <input accept=".csv,.txt" onChange={handleRosterUpload} type="file" />
+            </label>
+
+            <div className="upload-hint-card">
+              <strong>Accepted roster format</strong>
+              <p className="section-copy">
+                Upload a CSV with an <strong>email</strong> column. Example:
+                <code className="inline-code-block">name,email</code>
+                <code className="inline-code-block">Alice Student,alice@srmist.edu.in</code>
+                <code className="inline-code-block">Bob Student,bob@gmail.com</code>
+              </p>
+              <button className="secondary-button" onClick={downloadRosterTemplate} type="button">
+                Download sample CSV
+              </button>
+            </div>
+
+            {uploadedRosterFileName ? (
+              <p className="section-copy">
+                Imported <strong>{uploadedRosterEmails.length}</strong> emails from{" "}
+                <strong>{uploadedRosterFileName}</strong>.
+              </p>
+            ) : null}
 
             <div className="question-builder-header">
               <div>
@@ -590,6 +794,11 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   <Link className="secondary-button" href={`/quizzes/${quiz.id}`}>
                     View quiz
                   </Link>
+                  {quiz.mode === "WEBINAR" ? (
+                    <Link className="primary-button" href={`/quizzes/${quiz.id}/host`}>
+                      Host room
+                    </Link>
+                  ) : null}
                   {quiz._count?.attempts === 0 ? (
                     <Link className="primary-button" href={`/quizzes/${quiz.id}`}>
                       Edit quiz
@@ -606,6 +815,27 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   <Link className="secondary-button" href={`/quizzes/${quiz.id}/leaderboard`}>
                     Leaderboard
                   </Link>
+                  <button
+                    className="secondary-button"
+                    onClick={() => duplicateQuiz(quiz.id, quiz.title)}
+                    type="button"
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    className={quiz.showResultsToStudents ? "primary-button" : "secondary-button"}
+                    onClick={() => toggleResultRelease(quiz.id, quiz.showResultsToStudents)}
+                    type="button"
+                  >
+                    {quiz.showResultsToStudents ? "Results released" : "Release results"}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => exportAttemptsCsv(quiz.id, quiz.title)}
+                    type="button"
+                  >
+                    Export CSV
+                  </button>
                   <button
                     className={getStateActionClass(quiz.state, "DRAFT")}
                     disabled={quiz.state === "DRAFT"}

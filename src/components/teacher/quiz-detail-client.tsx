@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/client-auth";
 
 type QuizQuestionOption = {
@@ -35,6 +35,8 @@ type TeacherQuizDetail = {
   showResultsToStudents: boolean;
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
+  allowedParticipantEmails: string[];
+  allowedEmailDomains: string[];
   _count: {
     attempts: number;
     questions?: number;
@@ -65,6 +67,8 @@ type QuizFormState = {
   showResultsToStudents: boolean;
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
+  allowedParticipantEmails: string;
+  allowedEmailDomains: string;
 };
 
 const emptyQuestion = (displayOrder: number): QuizQuestion => ({
@@ -89,6 +93,35 @@ function toDateTimeInput(value: string) {
   return localDate.toISOString().slice(0, 16);
 }
 
+function extractEmails(rawText: string) {
+  const matches = rawText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+  return [...new Set(matches.map((email) => email.trim().toLowerCase()))];
+}
+
+function parseDomainRules(rawText: string) {
+  return [
+    ...new Set(
+      rawText
+        .split(/[\n,; ]+/)
+        .map((item) => item.trim().toLowerCase().replace(/^[@.]+/, ""))
+        .filter(Boolean)
+    )
+  ];
+}
+
+function downloadRosterTemplate() {
+  const csv = "name,email\nAlice Student,alice@srmist.edu.in\nBob Student,bob@gmail.com\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "qez-roster-template.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 function buildFormState(quiz: TeacherQuizDetail): QuizFormState {
   return {
     title: quiz.title,
@@ -100,7 +133,9 @@ function buildFormState(quiz: TeacherQuizDetail): QuizFormState {
     leaderboardVisibility: quiz.leaderboardVisibility,
     showResultsToStudents: quiz.showResultsToStudents,
     shuffleQuestions: quiz.shuffleQuestions,
-    shuffleOptions: quiz.shuffleOptions
+    shuffleOptions: quiz.shuffleOptions,
+    allowedParticipantEmails: quiz.allowedParticipantEmails.join("\n"),
+    allowedEmailDomains: quiz.allowedEmailDomains.join("\n")
   };
 }
 
@@ -123,6 +158,8 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
   const [draggedQuestionIndex, setDraggedQuestionIndex] = useState<number | null>(null);
   const [formState, setFormState] = useState<QuizFormState | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
+  const [uploadedRosterFileName, setUploadedRosterFileName] = useState<string | null>(null);
 
   const editingLocked = (quiz?._count.attempts ?? 0) > 0;
 
@@ -155,6 +192,8 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
 
     setFormState(buildFormState(quiz));
     setQuestions(cloneQuestions(quiz.questions));
+    setUploadedRosterEmails([]);
+    setUploadedRosterFileName(null);
     setMessage(null);
     setError(null);
     setIsEditing(true);
@@ -167,6 +206,8 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
 
     setFormState(buildFormState(quiz));
     setQuestions(cloneQuestions(quiz.questions));
+    setUploadedRosterEmails([]);
+    setUploadedRosterFileName(null);
     setIsEditing(false);
     setError(null);
     setMessage(null);
@@ -241,6 +282,32 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
     setDraggedQuestionIndex(null);
   }
 
+  async function handleRosterUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const isCsvLike = file.name.toLowerCase().endsWith(".csv") || file.name.toLowerCase().endsWith(".txt");
+
+    if (!isCsvLike) {
+      setError("Upload a CSV file or an Excel-exported CSV roster with student emails.");
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const emails = extractEmails(text);
+      setUploadedRosterEmails(emails);
+      setUploadedRosterFileName(file.name);
+      setMessage(`Imported ${emails.length} roster emails from ${file.name}.`);
+      setError(null);
+    } catch {
+      setError("Unable to read that roster file.");
+    }
+  }
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -257,6 +324,10 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
         method: "PATCH",
         body: JSON.stringify({
           ...formState,
+          allowedParticipantEmails: [
+            ...new Set([...uploadedRosterEmails, ...extractEmails(formState.allowedParticipantEmails)])
+          ],
+          allowedEmailDomains: parseDomainRules(formState.allowedEmailDomains),
           questions: questions.map((question, questionIndex) => ({
             prompt: question.prompt,
             explanation: question.explanation?.trim() ? question.explanation : undefined,
@@ -374,6 +445,16 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
           <div className="quiz-summary-card__meta">
             {quiz.shuffleQuestions ? <span className="question-badge">Shuffled questions</span> : null}
             {quiz.shuffleOptions ? <span className="question-badge">Shuffled options</span> : null}
+          </div>
+          <div className="quiz-summary-card__meta">
+            {quiz.allowedParticipantEmails.length > 0 ? (
+              <span className="question-badge">{quiz.allowedParticipantEmails.length} named emails</span>
+            ) : null}
+            {quiz.allowedEmailDomains.length > 0 ? (
+              <span className="question-badge">{quiz.allowedEmailDomains.length} domain rules</span>
+            ) : (
+              <span className="question-badge">Open participation</span>
+            )}
           </div>
           {editingLocked ? (
             <div className="locked-note">
@@ -498,6 +579,50 @@ export function QuizDetailClient({ quizId }: QuizDetailClientProps) {
                   <option value="FULL">Full</option>
                 </select>
               </label>
+
+              <div className="two-column-grid">
+                <label className="field">
+                  <span>Allowed participant emails</span>
+                  <textarea
+                    onChange={(event) => updateFormState("allowedParticipantEmails", event.target.value)}
+                    rows={4}
+                    value={formState.allowedParticipantEmails}
+                  />
+                </label>
+                <label className="field">
+                  <span>Allowed email domains</span>
+                  <textarea
+                    onChange={(event) => updateFormState("allowedEmailDomains", event.target.value)}
+                    rows={4}
+                    value={formState.allowedEmailDomains}
+                  />
+                </label>
+              </div>
+
+              <label className="field">
+                <span>Roster CSV upload</span>
+                <input accept=".csv,.txt" onChange={handleRosterUpload} type="file" />
+              </label>
+
+              <div className="upload-hint-card">
+                <strong>Accepted roster format</strong>
+                <p className="section-copy">
+                  Upload a CSV with an <strong>email</strong> column. Example:
+                  <code className="inline-code-block">name,email</code>
+                  <code className="inline-code-block">Alice Student,alice@srmist.edu.in</code>
+                  <code className="inline-code-block">Bob Student,bob@gmail.com</code>
+                </p>
+                <button className="secondary-button" onClick={downloadRosterTemplate} type="button">
+                  Download sample CSV
+                </button>
+              </div>
+
+              {uploadedRosterFileName ? (
+                <p className="section-copy">
+                  Imported <strong>{uploadedRosterEmails.length}</strong> emails from{" "}
+                  <strong>{uploadedRosterFileName}</strong>.
+                </p>
+              ) : null}
 
               <div className="question-builder-header">
                 <div>

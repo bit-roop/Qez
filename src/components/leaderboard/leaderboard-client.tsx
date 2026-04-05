@@ -25,6 +25,17 @@ type LeaderboardData = {
       name: string;
     };
   }[];
+  topPerformers: {
+    id: string;
+    rank: number;
+    pointsAwarded: number;
+    totalScore: number;
+    totalTimeSeconds: number;
+    user: {
+      id: string;
+      name: string;
+    };
+  }[];
   myEntry?: {
     rank: number;
     totalScore: number;
@@ -36,6 +47,7 @@ type LeaderboardData = {
     };
   } | null;
   totalParticipants: number;
+  lastUpdatedAt: string;
 };
 
 type LeaderboardClientProps = {
@@ -132,6 +144,35 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
           </article>
         </div>
       </article>
+
+      {data.quiz.mode === "WEBINAR" && data.topPerformers.length > 0 ? (
+        <article className="leaderboard-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Podium</span>
+              <h2>Fastest top performers right now</h2>
+            </div>
+            <span className="question-badge">
+              Refreshed {new Date(data.lastUpdatedAt).toLocaleTimeString()}
+            </span>
+          </div>
+
+          <div className="webinar-podium webinar-podium--revealed">
+            {data.topPerformers.map((entry, index) => (
+              <article
+                className={`webinar-podium-card webinar-podium-card--${index + 1}`}
+                key={entry.id}
+              >
+                <span className="webinar-podium-rank">#{entry.rank}</span>
+                <strong>{entry.user.name}</strong>
+                <span>{entry.pointsAwarded} pts</span>
+                <span>{entry.totalScore} score</span>
+                <span>{entry.totalTimeSeconds}s</span>
+              </article>
+            ))}
+          </div>
+        </article>
+      ) : null}
 
       {data.myEntry ? (
         <article className="leaderboard-panel leaderboard-panel--me">
