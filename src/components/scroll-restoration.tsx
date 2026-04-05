@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 const STORAGE_KEY = "qez.scroll.positions";
 
@@ -20,7 +20,7 @@ function persistPosition(routeKey: string) {
   window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
 }
 
-export function ScrollRestoration() {
+function ScrollRestorationInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const routeKey = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
@@ -56,4 +56,12 @@ export function ScrollRestoration() {
   }, [routeKey]);
 
   return null;
+}
+
+export function ScrollRestoration() {
+  return (
+    <Suspense fallback={null}>
+      <ScrollRestorationInner />
+    </Suspense>
+  );
 }

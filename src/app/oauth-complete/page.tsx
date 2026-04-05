@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { getDefaultDashboardPath, saveSession } from "@/lib/client-auth";
 import { AuthSession } from "@/types/client-auth";
 
-export default function OAuthCompletePage() {
+function OAuthCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +41,18 @@ export default function OAuthCompletePage() {
       <section className="card auth-state-card">
         <span className="eyebrow">Google Sign-In</span>
         <h1>{error ? "Sign-in failed" : "Finishing sign-in..."}</h1>
-        <p className="section-copy">{error ?? "Please wait while we open your dashboard."}</p>
+        <p className="section-copy">
+          {error ?? "Please wait while we open your dashboard."}
+        </p>
       </section>
     </main>
+  );
+}
+
+export default function OAuthCompletePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OAuthCompleteContent />
+    </Suspense>
   );
 }
