@@ -7,50 +7,44 @@ export function BrandMark({ className }: BrandMarkProps) {
     <svg
       aria-hidden="true"
       className={className}
-      viewBox="0 0 180 180"
+      viewBox="0 0 220 220"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient id="qezBlue" x1="20" y1="30" x2="135" y2="150" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#3CA6F7" />
-          <stop offset="1" stopColor="#2563C8" />
+        <linearGradient id="qezGold" x1="34" y1="24" x2="168" y2="180" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#E6D3A3" />
+          <stop offset="0.52" stopColor="#C2A36B" />
+          <stop offset="1" stopColor="#8C6B3F" />
         </linearGradient>
-        <linearGradient id="qezTeal" x1="82" y1="30" x2="158" y2="110" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#2CD3BF" />
-          <stop offset="1" stopColor="#179C9C" />
+        <linearGradient id="qezGoldSoft" x1="52" y1="46" x2="164" y2="150" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#F0E2BC" />
+          <stop offset="1" stopColor="#A9864F" />
         </linearGradient>
-        <linearGradient id="qezOrange" x1="58" y1="52" x2="126" y2="136" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#FFAA2B" />
-          <stop offset="1" stopColor="#F47C1D" />
+        <linearGradient id="qezDark" x1="70" y1="52" x2="154" y2="154" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#4A3921" />
+          <stop offset="1" stopColor="#231A10" />
         </linearGradient>
       </defs>
+      <circle cx="110" cy="110" r="66" fill="#14110D" stroke="url(#qezGold)" strokeWidth="12" />
+      <circle cx="110" cy="110" r="46" fill="#111111" stroke="url(#qezGoldSoft)" strokeWidth="7" />
+      <path d="M110 12L117 30H103L110 12Z" fill="url(#qezGold)" />
+      <path d="M110 208L103 190H117L110 208Z" fill="url(#qezGold)" />
+      <path d="M12 110L30 103V117L12 110Z" fill="url(#qezGold)" />
+      <path d="M208 110L190 117V103L208 110Z" fill="url(#qezGold)" />
+      <circle cx="110" cy="110" r="86" stroke="rgba(194,163,107,0.35)" strokeDasharray="8 10" strokeWidth="3" />
       <path
-        d="M90 22C53.55 22 24 51.55 24 88C24 124.45 53.55 154 90 154C103.925 154 116.845 149.655 127.48 142.255L143.95 158.675C146.94 161.675 151.79 161.675 154.79 158.675C157.79 155.675 157.79 150.825 154.79 147.825L138.44 131.535C147.845 120.64 153.5 106.455 153.5 91C153.5 53.997 123.003 22 86 22H90ZM90 41C115.405 41 136 61.595 136 87C136 112.405 115.405 133 90 133C64.595 133 44 112.405 44 87C44 61.595 64.595 41 90 41Z"
-        fill="url(#qezBlue)"
+        d="M92 78C92 66 100.6 58 112.2 58C123.8 58 132 64.6 132 75C132 83.2 126.8 88.8 118 92.2V102H104V86.5C113 84.4 118 80.5 118 74.8C118 69.9 114.2 66.8 108.4 66.8C103.4 66.8 98.4 68.8 93.8 72.9L86.2 63.4C92.6 57.5 101.2 54 112 54C129.2 54 144 64.2 144 79.6C144 92.4 135.5 100.7 122 105.1V117H98V96.4C111.1 93.9 118.5 88.7 118.5 80.9C118.5 73.8 113.2 69.4 105.6 69.4C99.8 69.4 94.2 71.9 88.9 76.4L92 78Z"
+        fill="url(#qezGoldSoft)"
       />
-      <path
-        d="M83 40C114.86 40 140.86 64.98 142.89 96.34C143.06 98.94 145.15 101 147.76 101H160.37C163.31 101 165.64 98.49 165.39 95.56C162.33 52.97 126.67 19 83 19C76.73 19 70.65 19.7 64.82 21.02C61.28 21.82 59.72 26.01 61.95 28.87L69.52 38.61C70.7 40.12 72.72 40.72 74.57 40.29C77.3 39.66 80.11 39.32 83 39.32V40Z"
-        fill="url(#qezTeal)"
-      />
-      <path
-        d="M90.27 55C103.3 55 113 63.21 113 75.27C113 84.89 106.71 92.19 97.26 95.83V105.3H83.4V88.04C93.11 85.99 98.83 81.16 98.83 74.15C98.83 67.46 93.37 63.11 85.42 63.11C79.6 63.11 73.67 65.42 68.59 69.52L60.67 57.76C67.77 51.85 78.08 48 90.27 48V55ZM82.72 123.17C82.72 117.71 86.94 113.49 92.4 113.49C97.86 113.49 102.08 117.71 102.08 123.17C102.08 128.63 97.86 132.85 92.4 132.85C86.94 132.85 82.72 128.63 82.72 123.17Z"
-        fill="url(#qezOrange)"
-      />
-      <path
-        d="M123.5 67.5L165 67.5L165 109"
-        stroke="url(#qezOrange)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="14"
-      />
-      <path
-        d="M118 112L165 67"
-        stroke="url(#qezOrange)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="14"
-      />
+      <circle cx="110" cy="144" r="10" fill="url(#qezGold)" />
+      <path d="M69 45L56 32L66 22L79 35L69 45Z" fill="url(#qezGold)" opacity="0.88" />
+      <path d="M151 45L141 35L154 22L164 32L151 45Z" fill="url(#qezGold)" opacity="0.88" />
+      <path d="M69 175L79 185L66 198L56 188L69 175Z" fill="url(#qezGold)" opacity="0.88" />
+      <path d="M151 175L164 188L154 198L141 185L151 175Z" fill="url(#qezGold)" opacity="0.88" />
+      <path d="M123 123L165 82" stroke="url(#qezDark)" strokeLinecap="round" strokeWidth="9" />
+      <path d="M151 78H176V103" stroke="url(#qezGold)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="8" />
+      <path d="M96 113L110 126L126 96" stroke="url(#qezDark)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="8" />
     </svg>
   );
 }

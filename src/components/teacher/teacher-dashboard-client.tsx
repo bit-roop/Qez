@@ -117,6 +117,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState([emptyQuestion(1)]);
+  const [collapsedQuestions, setCollapsedQuestions] = useState<number[]>([]);
   const [allowedEmailsInput, setAllowedEmailsInput] = useState("");
   const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
   const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
@@ -322,6 +323,15 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
           displayOrder: nextIndex + 1
         }))
     );
+    setCollapsedQuestions((current) =>
+      current.filter((item) => item !== index).map((item) => (item > index ? item - 1 : item))
+    );
+  }
+
+  function toggleQuestionCollapse(index: number) {
+    setCollapsedQuestions((current) =>
+      current.includes(index) ? current.filter((item) => item !== index) : [...current, index]
+    );
   }
 
   function moveQuestion(index: number, targetIndex: number) {
@@ -391,7 +401,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     const payload = {
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
-      mode: String(formData.get("mode") ?? "ACADEMIC"),
+      mode: "ACADEMIC",
       startsAt: String(formData.get("startsAt") ?? ""),
       endsAt: String(formData.get("endsAt") ?? ""),
       allowLeaderboard: formData.get("allowLeaderboard") === "on",
@@ -494,13 +504,10 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                 <input name="title" placeholder="DBMS Midterm Assessment" required type="text" />
               </label>
 
-              <label className="field">
+              <div className="field field-readonly">
                 <span>Mode</span>
-                <select defaultValue="ACADEMIC" name="mode">
-                  <option value="ACADEMIC">Academic</option>
-                  <option value="WEBINAR">Webinar</option>
-                </select>
-              </label>
+                <div className="field-static">Academic</div>
+              </div>
             </div>
 
             <label className="field">
@@ -608,6 +615,9 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
 
             <div className="question-stack">
               {questions.map((question, questionIndex) => (
+                (() => {
+                  const isCollapsed = collapsedQuestions.includes(questionIndex);
+                  return (
                 <article
                   className={`question-editor ${draggedQuestionIndex === questionIndex ? "question-editor--dragging" : ""}`}
                   key={question.displayOrder}
@@ -615,7 +625,14 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   onDrop={() => handleQuestionDrop(questionIndex)}
                 >
                   <div className="question-editor-header">
-                    <h4>Question {questionIndex + 1}</h4>
+                    <div>
+                      <h4>Question {questionIndex + 1}</h4>
+                      {isCollapsed ? (
+                        <p className="question-editor-preview">
+                          {question.prompt || "Collapsed. Expand to edit this question."}
+                        </p>
+                      ) : null}
+                    </div>
                     <div className="question-editor-actions">
                       <button
                         aria-label={`Drag question ${questionIndex + 1}`}
@@ -629,6 +646,13 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                         <span />
                         <span />
                       </button>
+                      <button
+                        className="secondary-button question-action-button"
+                        onClick={() => toggleQuestionCollapse(questionIndex)}
+                        type="button"
+                      >
+                        {isCollapsed ? "Expand" : "Collapse"}
+                      </button>
                       {questions.length > 1 ? (
                         <button
                           className="text-button button-reset"
@@ -641,6 +665,8 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                     </div>
                   </div>
 
+                  {!isCollapsed ? (
+                    <>
                   <label className="field">
                     <span>Prompt</span>
                     <textarea
@@ -727,7 +753,11 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                       </label>
                     ))}
                   </div>
+                    </>
+                  ) : null}
                 </article>
+                  );
+                })()
               ))}
             </div>
 
@@ -794,11 +824,6 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   <Link className="secondary-button" href={`/quizzes/${quiz.id}`}>
                     View quiz
                   </Link>
-                  {quiz.mode === "WEBINAR" ? (
-                    <Link className="primary-button" href={`/quizzes/${quiz.id}/host`}>
-                      Host room
-                    </Link>
-                  ) : null}
                   {quiz._count?.attempts === 0 ? (
                     <Link className="primary-button" href={`/quizzes/${quiz.id}`}>
                       Edit quiz

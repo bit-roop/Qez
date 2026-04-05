@@ -39,7 +39,7 @@ export function SiteHeader() {
       return [
         { href: "/", label: "Home" },
         { href: "/dashboard/host", label: "Live Control" },
-        { href: "/dashboard/teacher", label: "Quiz Studio" }
+        { href: "/settings", label: "Profile" }
       ];
     }
 
@@ -47,7 +47,7 @@ export function SiteHeader() {
       return [
         { href: "/", label: "Home" },
         { href: "/dashboard/teacher", label: "Quiz Studio" },
-        { href: "/dashboard/host", label: "Live Control" }
+        { href: "/settings", label: "Profile" }
       ];
     }
 

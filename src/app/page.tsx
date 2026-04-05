@@ -150,8 +150,8 @@ export default function HomePage() {
                 <span className="question-badge">Studio</span>
                 <h2>Create the next webinar quiz</h2>
                 <p>Jump into quiz setup, prepare new rounds, and keep your live queue ready.</p>
-                <Link className="secondary-button" href="/dashboard/teacher">
-                  Open quiz studio
+                <Link className="secondary-button" href="/dashboard/host/create">
+                  Open webinar studio
                 </Link>
               </article>
             </>

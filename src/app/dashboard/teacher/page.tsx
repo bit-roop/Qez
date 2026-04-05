@@ -7,8 +7,8 @@ export default function TeacherDashboardPage() {
   return (
     <main className="page-shell">
       <SessionGate
-        allowedRoles={["TEACHER", "ADMIN", "WEBINAR_HOST"]}
-        description="Login with a teacher, admin, or webinar host account to create and manage quizzes."
+        allowedRoles={["TEACHER", "ADMIN"]}
+        description="Login with a teacher or admin account to create and manage academic quizzes."
         title="Teacher Dashboard"
       >
         {(session) => <TeacherDashboardClient session={session} />}
