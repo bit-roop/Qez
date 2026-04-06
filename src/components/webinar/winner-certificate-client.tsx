@@ -106,13 +106,9 @@ export function WinnerCertificateClient({ quizId }: WinnerCertificateClientProps
           >
             Export winners CSV
           </a>
-          <button
-            className="secondary-button"
-            onClick={() => window.print()}
-            type="button"
-          >
-            Print certificates
-          </button>
+          <a className="secondary-button" href={`/api/quizzes/${quizId}/certificates/pdf`}>
+            Download PDF certificates
+          </a>
         </div>
       </article>
 

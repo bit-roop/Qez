@@ -64,6 +64,7 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "quizzes">("overview");
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
     try {
       setError(null);
       setMessage(null);
+      setResetLink(null);
 
       const response = await apiFetch<{ user: AdminUser }>("/api/admin/users", {
         method: "PATCH",
@@ -107,6 +109,105 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
       setMessage("User role updated.");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to update role.");
+    }
+  }
+
+  async function issueResetLink(userId: string) {
+    try {
+      setError(null);
+      setMessage(null);
+
+      const response = await apiFetch<{ resetLink: string; message: string }>("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          userId,
+          action: "issue-reset-link"
+        })
+      });
+
+      setResetLink(response.resetLink);
+      setMessage(response.message);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to create reset link.");
+    }
+  }
+
+  async function deleteUser(userId: string, name: string) {
+    if (!window.confirm(`Delete ${name}'s account? This removes their attempts and hosted quiz ownership.`)) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setMessage(null);
+      setResetLink(null);
+
+      const response = await apiFetch<{ deletedUserId: string; message: string }>("/api/admin/users", {
+        method: "DELETE",
+        body: JSON.stringify({
+          userId
+        })
+      });
+
+      setUsers((current) => current.filter((user) => user.id !== response.deletedUserId));
+      setMessage(response.message);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to delete user.");
+    }
+  }
+
+  async function archiveQuiz(quizId: string) {
+    try {
+      setError(null);
+      setMessage(null);
+
+      await apiFetch(`/api/quizzes/${quizId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          state: "ARCHIVED"
+        })
+      });
+
+      setOverview((current) =>
+        current
+          ? {
+              ...current,
+              recentQuizzes: current.recentQuizzes.map((quiz) =>
+                quiz.id === quizId ? { ...quiz, state: "ARCHIVED" } : quiz
+              )
+            }
+          : current
+      );
+      setMessage("Quiz archived.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to archive quiz.");
+    }
+  }
+
+  async function deleteQuiz(quizId: string, title: string) {
+    if (!window.confirm(`Delete quiz "${title}"? This removes all related attempts and logs.`)) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setMessage(null);
+
+      await apiFetch(`/api/quizzes/${quizId}`, {
+        method: "DELETE"
+      });
+
+      setOverview((current) =>
+        current
+          ? {
+              ...current,
+              recentQuizzes: current.recentQuizzes.filter((quiz) => quiz.id !== quizId)
+            }
+          : current
+      );
+      setMessage("Quiz deleted.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to delete quiz.");
     }
   }
 
@@ -163,6 +264,12 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
       </div>
 
       {message ? <p className="form-success">{message}</p> : null}
+      {resetLink ? (
+        <div className="admin-reset-link">
+          <strong>Password reset link</strong>
+          <a href={resetLink}>{resetLink}</a>
+        </div>
+      ) : null}
       {error ? <p className="form-error">{error}</p> : null}
 
       {overview && activeTab === "overview" ? (
@@ -306,6 +413,22 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
                       <option value="ADMIN">Admin</option>
                     </select>
                   </label>
+                  <div className="admin-inline-actions">
+                    <button
+                      className="secondary-button"
+                      onClick={() => issueResetLink(user.id)}
+                      type="button"
+                    >
+                      Reset link
+                    </button>
+                    <button
+                      className="secondary-button secondary-button--danger"
+                      onClick={() => deleteUser(user.id, user.name)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -340,6 +463,20 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
                     <Link className="secondary-button" href={`/quizzes/${quiz.id}/analytics`}>
                       Analytics
                     </Link>
+                    <button
+                      className="secondary-button"
+                      onClick={() => archiveQuiz(quiz.id)}
+                      type="button"
+                    >
+                      Archive
+                    </button>
+                    <button
+                      className="secondary-button secondary-button--danger"
+                      onClick={() => deleteQuiz(quiz.id, quiz.title)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </article>
               ))}

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client-auth";
+import { getStoredToken } from "@/lib/client-auth";
 
 type LeaderboardData = {
   quiz: {
@@ -58,6 +59,8 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLive, setIsLive] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -84,13 +87,39 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
     }
 
     void loadLeaderboard();
-    const interval = window.setInterval(() => {
-      void loadLeaderboard();
-    }, 5000);
+
+    const token = getStoredToken();
+
+    if (token) {
+      const eventSource = new EventSource(
+        `/api/quizzes/${quizId}/leaderboard/stream?token=${encodeURIComponent(token)}`
+      );
+      eventSourceRef.current = eventSource;
+
+      eventSource.onmessage = (event) => {
+        if (!active) {
+          return;
+        }
+
+        try {
+          const payload = JSON.parse(event.data) as LeaderboardData;
+          setData(payload);
+          setError(null);
+          setIsLoading(false);
+          setIsLive(true);
+        } catch {
+          setIsLive(false);
+        }
+      };
+
+      eventSource.onerror = () => {
+        setIsLive(false);
+      };
+    }
 
     return () => {
       active = false;
-      window.clearInterval(interval);
+      eventSourceRef.current?.close();
     };
   }, [quizId]);
 
@@ -142,6 +171,10 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
             <strong>{data.quiz.leaderboardVisibility}</strong>
             <span>Visibility mode</span>
           </article>
+          <article className="metric-card">
+            <strong>{isLive ? "LIVE" : "SYNC"}</strong>
+            <span>{isLive ? "Streaming updates" : "Snapshot mode"}</span>
+          </article>
         </div>
       </article>
 
@@ -153,7 +186,7 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
               <h2>Fastest top performers right now</h2>
             </div>
             <span className="question-badge">
-              Refreshed {new Date(data.lastUpdatedAt).toLocaleTimeString()}
+              {isLive ? "Live stream" : "Refreshed"} {new Date(data.lastUpdatedAt).toLocaleTimeString()}
             </span>
           </div>
 
