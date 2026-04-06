@@ -122,6 +122,13 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
   }, [quizId]);
 
   const podium = useMemo(() => leaderboard?.topPerformers ?? [], [leaderboard]);
+  const totalCycleSeconds = useMemo(
+    () => Math.max(
+      Math.round((new Date(quiz?.endsAt ?? Date.now()).getTime() - new Date(quiz?.startsAt ?? Date.now()).getTime()) / 1000),
+      1
+    ),
+    [quiz?.endsAt, quiz?.startsAt]
+  );
 
   async function patchQuiz(body: Record<string, unknown>, successMessage: string) {
     try {
@@ -180,7 +187,26 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
               onClick={() => patchQuiz({ state: "ACTIVE", allowLeaderboard: true }, "Webinar round is now live.")}
               type="button"
             >
-              Go live
+              Open waiting room
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                const startsAt = new Date();
+                const endsAt = new Date(startsAt.getTime() + totalCycleSeconds * 1000);
+                void patchQuiz(
+                  {
+                    state: "ACTIVE",
+                    allowLeaderboard: true,
+                    startsAt: startsAt.toISOString(),
+                    endsAt: endsAt.toISOString()
+                  },
+                  "Synchronized webinar round started."
+                );
+              }}
+              type="button"
+            >
+              Start round now
             </button>
             <button
               className={quiz.state === "COMPLETED" ? "primary-button" : "secondary-button"}

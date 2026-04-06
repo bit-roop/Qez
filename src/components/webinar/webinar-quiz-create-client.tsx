@@ -1,7 +1,6 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/client-auth";
 import { AuthSession } from "@/types/client-auth";
 
@@ -47,8 +46,14 @@ function parseDomainRules(rawText: string) {
   ];
 }
 
+async function copyQuizInvite(title: string, joinCode: string) {
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://qez.vercel.app";
+  const joinLink = `${baseUrl}/?code=${joinCode}`;
+  const message = `Hey, join the webinar quiz "${title}" on Qez.\nOpen ${joinLink}\nYour room code is: ${joinCode}`;
+  await navigator.clipboard.writeText(message);
+}
+
 export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProps) {
-  const router = useRouter();
   const [questions, setQuestions] = useState([emptyQuestion(1)]);
   const [collapsedQuestions, setCollapsedQuestions] = useState<number[]>([]);
   const [draggedQuestionIndex, setDraggedQuestionIndex] = useState<number | null>(null);
@@ -56,6 +61,7 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
   const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
   const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
   const [uploadedRosterFileName, setUploadedRosterFileName] = useState<string | null>(null);
+  const [latestInvite, setLatestInvite] = useState<{ title: string; joinCode: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -180,9 +186,11 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
         })
       });
 
+      setLatestInvite({
+        title: String(formData.get("title") ?? ""),
+        joinCode: data.quiz.joinCode
+      });
       setMessage(`Webinar quiz created. Join code: ${data.quiz.joinCode}`);
-      router.push("/dashboard/host");
-      router.refresh();
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to create webinar quiz.");
     } finally {
@@ -255,6 +263,25 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
           </label>
 
           {uploadedRosterFileName ? <p className="section-copy">Imported from <strong>{uploadedRosterFileName}</strong>.</p> : null}
+
+          {latestInvite ? (
+            <div className="upload-hint-card">
+              <strong>Share this webinar room</strong>
+              <p className="section-copy">
+                Send participants code <strong>{latestInvite.joinCode}</strong> or copy the ready webinar invite.
+              </p>
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  void copyQuizInvite(latestInvite.title, latestInvite.joinCode);
+                  setMessage("Webinar invite copied.");
+                }}
+                type="button"
+              >
+                Copy link and invite text
+              </button>
+            </div>
+          ) : null}
 
           <div className="question-stack">
             {questions.map((question, questionIndex) => {

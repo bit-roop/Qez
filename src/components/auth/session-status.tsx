@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  clearSession,
-  getDefaultDashboardPath,
-  loadSession,
-  subscribeToSessionChanges
-} from "@/lib/client-auth";
-import { getAvatarPreset, getInitials } from "@/lib/profile";
+import { clearSession, loadSession, subscribeToSessionChanges } from "@/lib/client-auth";
+import { getAvatarPreset, getInitials, getProfileHoverLabel } from "@/lib/profile";
 import { AuthSession } from "@/types/client-auth";
 
 export function SessionStatus() {
@@ -40,7 +35,16 @@ export function SessionStatus() {
   return (
     <div className="session-status">
       <Link className="session-chip session-chip--profile" href="/settings">
-        <span className="session-avatar" style={{ background: avatar.accent }}>
+        <span
+          className="session-avatar"
+          style={{ background: avatar.accent }}
+          title={getProfileHoverLabel({
+            id: session.user.id,
+            institution: session.user.institution,
+            name: session.user.name,
+            role: session.user.role
+          })}
+        >
           {getInitials(session.user.name)}
         </span>
         <span>{session.user.name}</span>

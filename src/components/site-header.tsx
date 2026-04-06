@@ -20,11 +20,7 @@ export function SiteHeader() {
 
   const navItems = useMemo(() => {
     if (!session) {
-      return [
-        { href: "/", label: "Home" },
-        { href: "/login", label: "Login" },
-        { href: "/register", label: "Register" }
-      ];
+      return [{ href: "/", label: "Home" }];
     }
 
     if (session.user.role === "ADMIN") {

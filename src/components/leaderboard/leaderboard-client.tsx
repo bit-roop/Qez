@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client-auth";
 import { getStoredToken } from "@/lib/client-auth";
+import { getProfileHoverLabel, getProfileSerial } from "@/lib/profile";
 
 type LeaderboardData = {
   quiz: {
@@ -197,7 +198,10 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
                 key={entry.id}
               >
                 <span className="webinar-podium-rank">#{entry.rank}</span>
-                <strong>{entry.user.name}</strong>
+                <strong title={getProfileHoverLabel({ id: entry.user.id, name: entry.user.name })}>
+                  {entry.user.name}
+                </strong>
+                <small>{`QEZ-${getProfileSerial(entry.user.id)}`}</small>
                 <span>{entry.pointsAwarded} pts</span>
                 <span>{entry.totalScore} score</span>
                 <span>{entry.totalTimeSeconds}s</span>
@@ -240,7 +244,10 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
           {data.entries.map((entry) => (
             <div className="leaderboard-row" key={entry.id}>
               <span className="leaderboard-rank">#{entry.rank}</span>
-              <span>{entry.user.name}</span>
+              <span className="leaderboard-person" title={getProfileHoverLabel({ id: entry.user.id, name: entry.user.name })}>
+                <strong>{entry.user.name}</strong>
+                <small>{`QEZ-${getProfileSerial(entry.user.id)}`}</small>
+              </span>
               <span>{entry.pointsAwarded}</span>
               <span>{entry.totalScore}</span>
               <span>{entry.totalTimeSeconds}s</span>

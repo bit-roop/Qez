@@ -30,6 +30,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isHumanChecked, setIsHumanChecked] = useState(false);
   const oauthError = useMemo(() => {
     const code = searchParams.get("error");
 
@@ -54,6 +56,12 @@ export function AuthForm({ mode }: AuthFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (!isHumanChecked) {
+      setError("Please verify that you are a human before continuing.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
@@ -159,7 +167,22 @@ export function AuthForm({ mode }: AuthFormProps) {
 
           <label className="field">
             <span>Password</span>
-            <input name="password" placeholder="At least 8 characters" required type="password" />
+            <div className="password-field">
+              <input
+                name="password"
+                placeholder="At least 8 characters"
+                required
+                type={showPassword ? "text" : "password"}
+              />
+              <button
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="password-toggle button-reset"
+                onClick={() => setShowPassword((current) => !current)}
+                type="button"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </label>
 
           {!isLogin ? (
@@ -174,6 +197,15 @@ export function AuthForm({ mode }: AuthFormProps) {
               </select>
             </label>
           ) : null}
+
+          <label className="human-check">
+            <input
+              checked={isHumanChecked}
+              onChange={(event) => setIsHumanChecked(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Verify that you are a human</span>
+          </label>
 
           {error || oauthError ? <p className="form-error">{error ?? oauthError}</p> : null}
 

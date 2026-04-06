@@ -26,6 +26,12 @@ export default function HomePage() {
 
   useEffect(() => {
     setSession(loadSession());
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (code) {
+      setQuizCode(code.toUpperCase().slice(0, 6));
+    }
 
     return subscribeToSessionChanges(() => {
       setSession(loadSession());
@@ -57,34 +63,72 @@ export default function HomePage() {
     return (
       <main className="page-shell home-shell">
         <section className="home-hero home-hero--guest">
-          <div className="home-copy">
-            <span className="eyebrow">Qez</span>
-            <h1>Fast quizzes for classrooms and live events.</h1>
-            <p className="section-copy">
-              Create, activate, attempt, and score from one clean workflow.
-            </p>
-            <div className="hero-actions">
-              <Link className="primary-link" href="/register">
-                Create account
-              </Link>
-              <Link className="secondary-link" href="/login">
-                Login
-              </Link>
+          <div className="home-guest-layout">
+            <div className="home-copy">
+              <span className="eyebrow">Qez</span>
+              <h1>Build, host, and scale competitive quizzes — all in one system.</h1>
+              <p className="section-copy">
+                Run timed assessments, live webinar competitions, and real-time leaderboards with server-side scoring and built-in anti-cheat tracking.
+              </p>
+              <div className="hero-actions">
+                <Link className="primary-link" href="/register">
+                  Get Started
+                </Link>
+                <Link className="secondary-link" href="/#features">
+                  View Demo
+                </Link>
+              </div>
             </div>
+
+            <aside className="home-guest-side">
+              <article className="home-card home-card--accent">
+                <span className="question-badge">Feature Summary</span>
+                <h2>Two modes. One powerful engine.</h2>
+                <ul className="home-feature-list">
+                  <li>Academic mode with controlled access, analytics, and result locking</li>
+                  <li>Webinar mode with live ranking, speed-based scoring, and podium results</li>
+                  <li>Secure backend scoring with anti-cheat tracking and submission validation</li>
+                </ul>
+              </article>
+            </aside>
           </div>
 
-          <div className="home-grid">
-            <article className="home-card home-card--accent">
-              <span className="question-badge">Academic</span>
-              <h2>Teacher-controlled assessments</h2>
-              <p>Timed MCQs, one secure attempt, private results, and analytics.</p>
+          <div className="home-grid" id="features">
+            <article className="home-card home-card--accent" id="academic-mode">
+              <span className="question-badge">Academic Mode</span>
+              <h2>Structured assessments</h2>
+              <p>Conduct timed quizzes with full control over attempts, scoring, and result visibility.</p>
             </article>
-            <article className="home-card">
-              <span className="question-badge">Webinar</span>
-              <h2>Speed-based live competitions</h2>
-              <p>Fastest correct answers rise on the leaderboard and earn points.</p>
+            <article className="home-card" id="webinar-mode">
+              <span className="question-badge">Webinar Mode</span>
+              <h2>Live competitive rounds</h2>
+              <p>Run real-time quiz events with instant rankings, speed-based scoring, and winner tracking.</p>
+            </article>
+            <article className="home-card" id="leaderboard">
+              <span className="question-badge">Backend Strength</span>
+              <h2>Reliable by design</h2>
+              <p>Transaction-safe submissions, role-based access, and scalable PostgreSQL architecture.</p>
             </article>
           </div>
+
+          <section className="home-why card">
+            <span className="eyebrow">Why Qez</span>
+            <h2>Built for real use — not just demos</h2>
+            <div className="home-why-grid">
+              <article className="preview-card preview-card--feature">
+                <p className="section-copy">Server-side scoring with no client manipulation.</p>
+              </article>
+              <article className="preview-card preview-card--feature">
+                <p className="section-copy">Anti-cheat tracking with tab-switch detection.</p>
+              </article>
+              <article className="preview-card preview-card--feature">
+                <p className="section-copy">Scalable architecture using PostgreSQL, Prisma, and Neon.</p>
+              </article>
+              <article className="preview-card preview-card--feature">
+                <p className="section-copy">Works across desktop and mobile.</p>
+              </article>
+            </div>
+          </section>
         </section>
       </main>
     );

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth";
+import { getProfileSerial } from "@/lib/profile";
 import { canManageQuiz } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -67,6 +68,7 @@ export async function GET(
         submittedAt: true,
         user: {
           select: {
+            id: true,
             name: true,
             email: true
           }
@@ -75,7 +77,7 @@ export async function GET(
     });
 
     const csvRows = [
-      ["rank", "name", "email", "points", "score", "time_seconds", "suspicious", "submitted_at"].join(","),
+      ["rank", "profile_serial", "name", "email", "points", "score", "time_seconds", "suspicious", "submitted_at"].join(","),
       ...attempts.map((attempt, index) => {
         const points =
           quiz.mode === "WEBINAR"
@@ -92,6 +94,7 @@ export async function GET(
 
         return [
           index + 1,
+          `QEZ-${getProfileSerial(attempt.user.id.toString())}`,
           `"${attempt.user.name.replace(/"/g, '""')}"`,
           attempt.user.email,
           points,

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch, clearSession } from "@/lib/client-auth";
+import { getProfileHoverLabel, getProfileSerial } from "@/lib/profile";
 import { AuthSession } from "@/types/client-auth";
 
 type JoinQuizResponse = {
@@ -20,8 +21,10 @@ type JoinQuizResponse = {
     showResultsToStudents: boolean;
     questionCount: number;
     owner: {
+      id?: string;
       name: string;
       role: "TEACHER" | "ADMIN" | "WEBINAR_HOST";
+      institution?: string | null;
     };
   };
 };
@@ -35,6 +38,13 @@ const roadmapItems = [
   "See timer and question flow in a focused attempt layout",
   "View leaderboard only when the quiz allows it",
   "Review post-quiz results and flagged warnings"
+];
+
+const studentTools = [
+  "Quick join from the home page or your dashboard",
+  "Waiting rooms and synchronized webinar rounds",
+  "Result review only when the quiz owner allows it",
+  "Focus warnings that still keep your attempt moving"
 ];
 
 export function StudentDashboardClient({ session }: StudentDashboardClientProps) {
@@ -104,6 +114,21 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
         </div>
       </section>
 
+      <section className="stats-grid">
+        <article className="metric-card">
+          <strong>{`QEZ-${session.user.profileSerial ?? getProfileSerial(session.user.id)}`}</strong>
+          <span>Your profile serial</span>
+        </article>
+        <article className="metric-card">
+          <strong>{session.user.institution || "Add profile"}</strong>
+          <span>Institution</span>
+        </article>
+        <article className="metric-card">
+          <strong>Synced</strong>
+          <span>Webinar rounds stay time-aligned</span>
+        </article>
+      </section>
+
       <section className="dashboard-panel">
         <div className="dashboard-tabs">
           <button
@@ -170,7 +195,16 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
 
                 <div className="quiz-summary-card__meta">
                   <span>{matchedQuiz.questionCount} questions</span>
-                  <span>Host: {matchedQuiz.owner.name}</span>
+                  <span
+                    title={getProfileHoverLabel({
+                      id: matchedQuiz.owner.id ?? matchedQuiz.id,
+                      institution: matchedQuiz.owner.institution,
+                      name: matchedQuiz.owner.name,
+                      role: matchedQuiz.owner.role
+                    })}
+                  >
+                    Host: {matchedQuiz.owner.name}
+                  </span>
                   <span>Leaderboard: {matchedQuiz.leaderboardVisibility}</span>
                 </div>
 
@@ -208,6 +242,15 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
               {roadmapItems.map((item, index) => (
                 <article className="preview-card preview-card--feature" key={item}>
                   <span className="question-badge">0{index + 1}</span>
+                  <p className="section-copy">{item}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="experience-grid">
+              {studentTools.map((item, index) => (
+                <article className="preview-card preview-card--feature" key={item}>
+                  <span className="question-badge">T{index + 1}</span>
                   <p className="section-copy">{item}</p>
                 </article>
               ))}

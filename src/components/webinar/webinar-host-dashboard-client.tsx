@@ -12,6 +12,8 @@ type WebinarQuiz = {
   state: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
   mode: "ACADEMIC" | "WEBINAR";
   joinCode: string;
+  startsAt: string;
+  endsAt: string;
   allowLeaderboard: boolean;
   showResultsToStudents: boolean;
   _count: {
@@ -27,6 +29,13 @@ type WebinarHostDashboardClientProps = {
   session: AuthSession;
 };
 
+async function copyQuizInvite(title: string, joinCode: string) {
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://qez.vercel.app";
+  const joinLink = `${baseUrl}/?code=${joinCode}`;
+  const message = `Hey, join the webinar quiz "${title}" on Qez.\nOpen ${joinLink}\nYour room code is: ${joinCode}`;
+  await navigator.clipboard.writeText(message);
+}
+
 export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClientProps) {
   const [quizzes, setQuizzes] = useState<WebinarQuiz[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +43,21 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
   const [isLoading, setIsLoading] = useState(true);
 
   const liveQuiz = quizzes.find((quiz) => quiz.state === "ACTIVE") ?? null;
+
+  function buildLiveStartPayload(quiz: WebinarQuiz) {
+    const durationMs =
+      Math.max(new Date(quiz.endsAt).getTime() - new Date(quiz.startsAt).getTime(), 0) ||
+      1000 * 60 * 10;
+    const startsAt = new Date();
+    const endsAt = new Date(startsAt.getTime() + durationMs);
+
+    return {
+      state: "ACTIVE" as const,
+      allowLeaderboard: true,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString()
+    };
+  }
 
   useEffect(() => {
     async function loadQuizzes() {
@@ -51,13 +75,17 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
     void loadQuizzes();
   }, []);
 
-  async function updateQuizState(quizId: string, state: WebinarQuiz["state"]) {
+  async function updateQuizState(
+    quizId: string,
+    state: WebinarQuiz["state"],
+    extra?: Record<string, unknown>
+  ) {
     try {
       setError(null);
       setMessage(null);
       const data = await apiFetch<UpdateQuizResponse>(`/api/quizzes/${quizId}`, {
         method: "PATCH",
-        body: JSON.stringify({ state, allowLeaderboard: true })
+        body: JSON.stringify({ state, allowLeaderboard: true, ...extra })
       });
       setQuizzes((current) => current.map((quiz) => (quiz.id === quizId ? data.quiz : quiz)));
       setMessage(`Webinar quiz moved to ${state.toLowerCase()}.`);
@@ -171,12 +199,29 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
                     Leaderboard
                   </Link>
                   <button
+                    className="secondary-button"
+                    onClick={() => {
+                      void copyQuizInvite(quiz.title, quiz.joinCode);
+                      setMessage(`Invite copied for "${quiz.title}".`);
+                    }}
+                    type="button"
+                  >
+                    Copy link
+                  </button>
+                  <button
                     className={quiz.state === "ACTIVE" ? "primary-button" : "secondary-button"}
                     disabled={quiz.state === "ACTIVE"}
                     onClick={() => updateQuizState(quiz.id, "ACTIVE")}
                     type="button"
                   >
-                    Go live
+                    Open waiting room
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => updateQuizState(quiz.id, "ACTIVE", buildLiveStartPayload(quiz))}
+                    type="button"
+                  >
+                    Start round now
                   </button>
                   <button
                     className={quiz.state === "COMPLETED" ? "primary-button" : "secondary-button"}

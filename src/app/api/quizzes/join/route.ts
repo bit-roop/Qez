@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         allowedEmailDomains: true,
         owner: {
           select: {
+            id: true,
             name: true,
             role: true
           }

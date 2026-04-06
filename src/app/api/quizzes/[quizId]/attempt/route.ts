@@ -53,6 +53,7 @@ export async function GET(
         allowedEmailDomains: true,
         owner: {
           select: {
+            id: true,
             name: true,
             role: true
           }
@@ -129,7 +130,9 @@ export async function GET(
       quiz.state !== QuizState.ACTIVE
         ? "Quiz is not active yet."
         : now < quiz.startsAt
-          ? "Quiz has not started yet."
+          ? quiz.mode === "WEBINAR"
+            ? "Waiting for the host to start the synchronized round."
+            : "Quiz has not started yet."
           : now > quiz.endsAt
             ? "Quiz has already ended."
             : existingAttempt &&
@@ -145,7 +148,8 @@ export async function GET(
         canAttemptNow: availability === null
       }),
       attempt: serializeBigInt(existingAttempt),
-      availabilityMessage: availability
+      availabilityMessage: availability,
+      serverNow: now.toISOString()
     });
   } catch (error) {
     console.error("attempt quiz fetch error", error);

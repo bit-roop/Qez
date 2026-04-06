@@ -1,5 +1,6 @@
 import { jsonError, jsonOk } from "@/lib/api";
 import { createRandomToken, hashOpaqueToken, resolveBaseUrl } from "@/lib/auth";
+import { isSmtpConfigured, sendPasswordResetEmail } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
 import { forgotPasswordSchema } from "@/lib/validators/auth";
 
@@ -44,8 +45,16 @@ export async function POST(request: Request) {
 
     const resetLink = `${resolveBaseUrl(request)}/reset-password?token=${rawToken}`;
 
+    if (isSmtpConfigured()) {
+      await sendPasswordResetEmail(user.email, resetLink);
+
+      return jsonOk({
+        message: "Password reset email sent successfully."
+      });
+    }
+
     return jsonOk({
-      message: "Use this reset link to continue:",
+      message: "SMTP is not configured yet, so use this reset link to continue:",
       resetLink
     });
   } catch (error) {

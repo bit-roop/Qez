@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { ReactNode } from "react";
 import { ScrollRestoration } from "@/components/scroll-restoration";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
 const inter = Inter({
@@ -29,10 +30,11 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${playfair.variable}`}>
+      <body className={`${inter.variable} ${playfair.variable} app-body`}>
         <ScrollRestoration />
         <SiteHeader />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

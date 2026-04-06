@@ -19,3 +19,30 @@ export function getInitials(name: string) {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+export function getProfileSerial(seed: string) {
+  let hash = BigInt(0);
+  const multiplier = BigInt(131);
+  const modulo = BigInt("10000000000000000");
+
+  for (const character of seed) {
+    hash = (hash * multiplier + BigInt(character.charCodeAt(0))) % modulo;
+  }
+
+  return hash.toString().padStart(16, "0");
+}
+
+export function getProfileHoverLabel(user: {
+  id: string;
+  name: string;
+  role?: string | null;
+  institution?: string | null;
+}) {
+  const parts = [user.name, `QEZ-${getProfileSerial(user.id)}`];
+
+  if (user.role === "TEACHER" && user.institution) {
+    parts.push(user.institution);
+  }
+
+  return parts.join(" • ");
+}

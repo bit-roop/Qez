@@ -101,6 +101,13 @@ function downloadRosterTemplate() {
   window.URL.revokeObjectURL(url);
 }
 
+async function copyQuizInvite(title: string, joinCode: string) {
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://qez.vercel.app";
+  const joinLink = `${baseUrl}/?code=${joinCode}`;
+  const message = `Hey, join the quiz "${title}" on Qez.\nOpen ${joinLink}\nYour room code is: ${joinCode}`;
+  await navigator.clipboard.writeText(message);
+}
+
 export function TeacherDashboardClient({ session }: TeacherDashboardClientProps) {
   const [activePanel, setActivePanel] = useState<"create" | "library">(() => {
     if (typeof window === "undefined") {
@@ -122,6 +129,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
   const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
   const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
   const [uploadedRosterFileName, setUploadedRosterFileName] = useState<string | null>(null);
+  const [latestInvite, setLatestInvite] = useState<{ title: string; joinCode: string } | null>(null);
 
   const quizStats = {
     total: quizzes.length,
@@ -426,6 +434,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       setAllowedDomainsInput("");
       setUploadedRosterEmails([]);
       setUploadedRosterFileName(null);
+      setLatestInvite({ title: data.quiz.title, joinCode: data.quiz.joinCode });
       form.reset();
       setMessage(`Quiz created successfully. Join code: ${data.quiz.joinCode}`);
     } catch (caughtError) {
@@ -604,6 +613,25 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                 Imported <strong>{uploadedRosterEmails.length}</strong> emails from{" "}
                 <strong>{uploadedRosterFileName}</strong>.
               </p>
+            ) : null}
+
+            {latestInvite ? (
+              <div className="upload-hint-card">
+                <strong>Share this quiz</strong>
+                <p className="section-copy">
+                  Invite learners with code <strong>{latestInvite.joinCode}</strong> or copy a ready-to-send Qez message.
+                </p>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    void copyQuizInvite(latestInvite.title, latestInvite.joinCode);
+                    setMessage("Share message copied.");
+                  }}
+                  type="button"
+                >
+                  Copy link and invite text
+                </button>
+              </div>
             ) : null}
 
             <div className="question-builder-header">
@@ -860,6 +888,16 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                     type="button"
                   >
                     Export CSV
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      void copyQuizInvite(quiz.title, quiz.joinCode);
+                      setMessage(`Invite copied for "${quiz.title}".`);
+                    }}
+                    type="button"
+                  >
+                    Copy link
                   </button>
                   <button
                     className={getStateActionClass(quiz.state, "DRAFT")}

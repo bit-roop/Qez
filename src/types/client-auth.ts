@@ -5,6 +5,7 @@ export type ClientUser = {
   avatarKey?: string | null;
   bio?: string | null;
   institution?: string | null;
+  profileSerial?: string | null;
   role: "STUDENT" | "TEACHER" | "ADMIN" | "WEBINAR_HOST";
 };
 
