@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/client-auth";
+import { apiFetch, downloadAuthenticatedFile } from "@/lib/client-auth";
 
 type QuizResultData = {
   quiz: {
@@ -18,6 +18,11 @@ type QuizResultData = {
     suspicious: boolean;
     submittedAt?: string | null;
   };
+  certificateClaim?: {
+    id: string;
+    title: string;
+    claimedAt: string;
+  } | null;
   questions: {
     id: string;
     prompt: string;
@@ -44,6 +49,9 @@ export function QuizResultClient({ quizId }: QuizResultClientProps) {
   const [data, setData] = useState<QuizResultData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [claimMessage, setClaimMessage] = useState<string | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [isDownloadingCertificate, setIsDownloadingCertificate] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -99,6 +107,57 @@ export function QuizResultClient({ quizId }: QuizResultClientProps) {
     );
   }
 
+  async function handleClaimCertificate() {
+    try {
+      setIsClaiming(true);
+      setClaimMessage(null);
+
+      await apiFetch(`/api/quizzes/${quizId}/certificate/claim`, {
+        method: "POST"
+      });
+
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              certificateClaim: {
+                id: "claimed",
+                title: `${current.quiz.title} Completion Certificate`,
+                claimedAt: new Date().toISOString()
+              }
+            }
+          : current
+      );
+      setClaimMessage("Certificate claimed. It now appears in your achievements tab.");
+    } catch (caughtError) {
+      setClaimMessage(caughtError instanceof Error ? caughtError.message : "Unable to claim certificate.");
+    } finally {
+      setIsClaiming(false);
+    }
+  }
+
+  async function handleDownloadCertificate() {
+    if (!data) {
+      setClaimMessage("Result details are not available yet.");
+      return;
+    }
+
+    try {
+      setIsDownloadingCertificate(true);
+      setClaimMessage(null);
+      await downloadAuthenticatedFile(
+        `/api/quizzes/${quizId}/certificate/pdf`,
+        `${data.quiz.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-certificate.pdf`
+      );
+    } catch (caughtError) {
+      setClaimMessage(
+        caughtError instanceof Error ? caughtError.message : "Unable to download certificate."
+      );
+    } finally {
+      setIsDownloadingCertificate(false);
+    }
+  }
+
   return (
     <section className="result-shell">
       <article className="result-panel result-panel--hero">
@@ -127,6 +186,24 @@ export function QuizResultClient({ quizId }: QuizResultClientProps) {
       </article>
 
       <article className="result-panel">
+        <div className="hero-actions">
+          {data.certificateClaim ? (
+            <button
+              className="secondary-button"
+              disabled={isDownloadingCertificate}
+              onClick={() => void handleDownloadCertificate()}
+              type="button"
+            >
+              {isDownloadingCertificate ? "Downloading..." : "Download certificate"}
+            </button>
+          ) : (
+            <button className="secondary-button" disabled={isClaiming} onClick={() => void handleClaimCertificate()} type="button">
+              {isClaiming ? "Claiming..." : "Claim certificate"}
+            </button>
+          )}
+        </div>
+        {claimMessage ? <p className="form-success">{claimMessage}</p> : null}
+
         <div className="result-question-list">
           {data.questions.map((question) => (
             <article className="result-question-card" key={question.id}>
@@ -182,4 +259,3 @@ export function QuizResultClient({ quizId }: QuizResultClientProps) {
     </section>
   );
 }
-

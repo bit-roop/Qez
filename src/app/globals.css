@@ -4047,6 +4047,37 @@ body::before {
   box-shadow: 6px 6px 0 var(--z-ink) !important;
   border-radius: 24px !important;
 }
+.certificate-shell .analytics-panel--hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-block: 1.4rem !important;
+}
+.certificate-shell .analytics-panel--hero > div:first-child {
+  max-width: 42rem;
+}
+.certificate-shell .quiz-actions {
+  align-items: center;
+}
+.certificate-shell .hero-strip {
+  margin-top: 1rem;
+  margin-bottom: 1.25rem;
+}
+.certificate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+.certificate-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.certificate-metrics--dense {
+  margin-top: 0.35rem;
+}
 .certificate-metrics span {
   background: var(--z-surface) !important;
   border: 1.5px solid var(--z-border-2) !important;
@@ -4618,4 +4649,217 @@ body {
 .attempt-warning-card .eyebrow {
   color: var(--z-ink) !important;
   -webkit-text-fill-color: var(--z-ink) !important;
+}
+
+.captcha-block {
+  display: grid;
+  gap: 0.6rem;
+}
+
+@media (max-width: 900px) {
+  .site-header__inner,
+  .page-shell,
+  .auth-shell {
+    width: min(100% - 1rem, 1120px) !important;
+  }
+
+  .site-header__inner {
+    min-height: auto;
+    padding: 0.75rem 0;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .brand-lockup {
+    gap: 0.65rem;
+  }
+
+  .brand-lockup__mark--image {
+    width: 2.7rem !important;
+    height: 2.7rem !important;
+  }
+
+  .brand-lockup__logo-image {
+    width: 2.7rem !important;
+    height: 2.7rem !important;
+  }
+
+  .brand-lockup small {
+    display: none !important;
+  }
+
+  .site-header__actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .site-nav {
+    gap: 0.45rem;
+    font-size: 0.92rem;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .site-nav a {
+    white-space: nowrap;
+  }
+
+  .session-status {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .session-chip {
+    padding: 0.55rem 0.75rem;
+    border-radius: 14px;
+  }
+
+  .session-avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .hero,
+  .home-guest-layout,
+  .quiz-detail-grid,
+  .attempt-shell,
+  .auth-shell,
+  .grid-section,
+  .stats-grid,
+  .dashboard-grid,
+  .preview-grid,
+  .analytics-grid,
+  .analytics-ring-grid,
+  .analytics-metric-grid,
+  .certificate-grid,
+  .profile-grid,
+  .home-grid,
+  .home-why-grid,
+  .two-column-grid,
+  .three-column-grid,
+  .option-grid,
+  .toggle-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero-copy,
+  .home-copy,
+  .card,
+  .dashboard-card,
+  .metric-card,
+  .preview-card,
+  .analytics-panel,
+  .result-panel,
+  .attempt-stage,
+  .attempt-sidebar {
+    padding: 1.15rem !important;
+    border-radius: 22px !important;
+  }
+
+  .dashboard-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .dashboard-tab {
+    white-space: nowrap;
+  }
+
+  .attempt-sidebar,
+  .quiz-detail-summary {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .attempt-stage-top,
+  .question-editor-header,
+  .dashboard-actions,
+  .button-row,
+  .hero-actions,
+  .attempt-stage-footer {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .attempt-stage-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .attempt-stage-actions > * {
+    width: 100%;
+  }
+
+  .leaderboard-table {
+    overflow-x: auto;
+  }
+
+  .leaderboard-row {
+    min-width: 640px;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 15px;
+  }
+
+  .certificate-shell .analytics-panel--hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .site-header {
+    border-radius: 0 !important;
+  }
+
+  .brand-lockup strong {
+    font-size: 1rem !important;
+  }
+
+  .site-header__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .session-status {
+    gap: 0.5rem;
+  }
+
+  .session-status > * {
+    width: 100%;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .primary-link,
+  .secondary-link {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .hero h1,
+  .home-copy h1,
+  .dashboard-hero h1,
+  .attempt-stage h1,
+  .result-panel h1,
+  .analytics-panel h1 {
+    font-size: clamp(2rem, 10vw, 2.6rem) !important;
+  }
+
+  .attempt-index-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .attempt-option {
+    padding: 0.85rem !important;
+  }
+
+  .result-question-card,
+  .analytics-question-card,
+  .admin-list-item {
+    padding: 1rem !important;
+  }
 }

@@ -46,6 +46,9 @@ type AttemptQuizData = {
     warningLevel: number;
     suspicious: boolean;
     submittedAt?: string | null;
+    draftAnswers?: Record<string, "A" | "B" | "C" | "D"> | null;
+    draftTimeSpent?: Record<string, number> | null;
+    lastRecoveredAt?: string | null;
   } | null;
   availabilityMessage?: string | null;
   serverNow: string;
@@ -181,6 +184,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const exitIntentRef = useRef<number | null>(null);
   const isAutoSubmittingRef = useRef(false);
   const lastFocusWarningAtRef = useRef(0);
+  const lastDraftSyncRef = useRef(0);
 
   async function loadAttemptQuiz() {
     try {
@@ -197,11 +201,28 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
           const parsed = JSON.parse(rawStored) as {
             selectedAnswers?: Record<string, "A" | "B" | "C" | "D">;
             timeSpent?: Record<string, number>;
+            currentIndex?: number;
           };
           setSelectedAnswers(parsed.selectedAnswers ?? {});
           setTimeSpent(parsed.timeSpent ?? {});
+          setCurrentIndex(parsed.currentIndex ?? 0);
         } catch {
           window.localStorage.removeItem(getAttemptStorageKey(quizId));
+        }
+      }
+
+      if (nextData.attempt?.draftAnswers && typeof nextData.attempt.draftAnswers === "object") {
+        setSelectedAnswers(nextData.attempt.draftAnswers as Record<string, "A" | "B" | "C" | "D">);
+      }
+
+      if (nextData.attempt?.draftTimeSpent && typeof nextData.attempt.draftTimeSpent === "object") {
+        const draftTimeSpent = nextData.attempt.draftTimeSpent as Record<string, number> & {
+          __currentQuestionIndex?: number;
+        };
+        const { __currentQuestionIndex, ...questionTimes } = draftTimeSpent;
+        setTimeSpent(questionTimes);
+        if (typeof __currentQuestionIndex === "number") {
+          setCurrentIndex(__currentQuestionIndex);
         }
       }
     } catch (caughtError) {
@@ -232,10 +253,34 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       getAttemptStorageKey(quizId),
       JSON.stringify({
         selectedAnswers,
-        timeSpent
+        timeSpent,
+        currentIndex
       })
     );
-  }, [data, quizId, selectedAnswers, timeSpent]);
+  }, [currentIndex, data, quizId, selectedAnswers, timeSpent]);
+
+  useEffect(() => {
+    if (!data || result || !data.quiz.canAttemptNow) {
+      return;
+    }
+
+    const now = Date.now();
+
+    if (now - lastDraftSyncRef.current < 4000) {
+      return;
+    }
+
+    lastDraftSyncRef.current = now;
+
+    void apiFetch(`/api/quizzes/${quizId}/attempt`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        selectedAnswers,
+        timeSpent,
+        currentQuestionIndex: currentIndex
+      })
+    }).catch(() => undefined);
+  }, [currentIndex, data, quizId, result, selectedAnswers, timeSpent]);
 
   useEffect(() => {
     setWarningCount(data?.attempt?.warningLevel ?? 0);
@@ -270,6 +315,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const webinarWaiting = Boolean(
     isWebinar && data && new Date(data.quiz.startsAt).getTime() > clockNowMs + serverOffsetMs
   );
+  const webinarFinished = Boolean(isWebinar && webinarPhase?.phase === "finished");
 
   useEffect(() => {
     if (!currentQuestion || result || !data?.quiz.canAttemptNow || isWebinar) {
@@ -307,14 +353,14 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   }, [currentIndex, currentQuestion, currentQuestionRemaining, data?.quiz.canAttemptNow, isSubmitting, isWebinar, questions.length, result]);
 
   useEffect(() => {
-    if (!isWebinar || !data || webinarWaiting || result) {
+    if (!isWebinar || !data || webinarWaiting || webinarFinished || result) {
       return;
     }
 
     if (webinarPhase?.phase === "finished" && !isSubmitting) {
       void handleSubmit();
     }
-  }, [data, isSubmitting, isWebinar, result, webinarPhase, webinarWaiting]);
+  }, [data, isSubmitting, isWebinar, result, webinarFinished, webinarPhase, webinarWaiting]);
 
   useEffect(() => {
     if (!data || !isWebinar) {
@@ -340,7 +386,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     void loadWebinarBoard();
     const interval = window.setInterval(() => {
       void loadWebinarBoard();
-    }, 2500);
+    }, 6000);
 
     return () => {
       active = false;
@@ -696,6 +742,39 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
               <span>Host</span>
             </article>
           </div>
+        </article>
+      </section>
+    );
+  }
+
+  if (isWebinar && webinarFinished && !result) {
+    return (
+      <section className="attempt-shell">
+        <article className="attempt-stage">
+          <span className="eyebrow">Round Complete</span>
+          <h1>{data.quiz.title}</h1>
+          <p className="section-copy">
+            The live room has ended. We&apos;re wrapping up your webinar attempt now.
+          </p>
+          <div className="attempt-result-grid">
+            <article className="metric-card">
+              <strong>{answeredCount}</strong>
+              <span>Answers locked</span>
+            </article>
+            <article className="metric-card">
+              <strong>{warningCount}</strong>
+              <span>Warnings logged</span>
+            </article>
+            <article className="metric-card">
+              <strong>{data.quiz.questionCount}</strong>
+              <span>Total questions</span>
+            </article>
+          </div>
+          <p className="section-copy">
+            {isSubmitting
+              ? "Submitting your webinar attempt..."
+              : "Your answers are no longer changing. You can wait here while the submission finishes."}
+          </p>
         </article>
       </section>
     );

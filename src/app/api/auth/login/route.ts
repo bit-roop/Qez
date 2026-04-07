@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { comparePassword, signAuthToken } from "@/lib/auth";
+import { verifyCaptchaToken } from "@/lib/captcha";
 import { DatabaseConnectionError, prisma, withDatabaseRetry } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validators/auth";
 
@@ -12,10 +13,28 @@ export async function POST(request: Request) {
       return jsonError(parsed.error.issues[0]?.message ?? "Invalid login data.");
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, captchaToken } = parsed.data;
+    const captchaValid = await verifyCaptchaToken(captchaToken);
+
+    if (!captchaValid) {
+      return jsonError("Captcha verification failed. Please try again.", 400);
+    }
+
     const user = await withDatabaseRetry(() =>
       prisma.user.findUnique({
-        where: { email }
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          passwordHash: true,
+          institution: true,
+          bio: true,
+          avatarKey: true,
+          profileSerial: true,
+          emailVerified: true
+        }
       })
     );
 
@@ -25,6 +44,10 @@ export async function POST(request: Request) {
 
     if (!user.passwordHash) {
       return jsonError("This account uses Google sign-in. Continue with Google instead.", 401);
+    }
+
+    if (!user.emailVerified) {
+      return jsonError("Please verify your email before logging in.", 403);
     }
 
     const passwordMatches = await comparePassword(password, user.passwordHash);
@@ -37,7 +60,8 @@ export async function POST(request: Request) {
       userId: user.id.toString(),
       email: user.email,
       role: user.role,
-      name: user.name
+      name: user.name,
+      emailVerified: user.emailVerified
     });
 
     return jsonOk({
@@ -46,7 +70,12 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        institution: user.institution,
+        bio: user.bio,
+        avatarKey: user.avatarKey,
+        profileSerial: user.profileSerial,
+        emailVerified: user.emailVerified
       })
     });
   } catch (error) {

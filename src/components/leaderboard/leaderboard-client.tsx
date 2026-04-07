@@ -158,7 +158,7 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
           <h1>{data.quiz.title}</h1>
           <p className="section-copy">
             {data.quiz.mode === "WEBINAR"
-              ? "Fastest correct answers rise to the top. Rankings refresh automatically."
+              ? "Fastest correct answers rise to the top. Rankings refresh on a steadier live cadence."
               : "Academic rankings are sorted by score first and time second."}
           </p>
         </div>

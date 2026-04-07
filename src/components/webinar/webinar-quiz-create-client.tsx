@@ -46,6 +46,16 @@ function parseDomainRules(rawText: string) {
   ];
 }
 
+function getCollapsedQuestionPreview(prompt: string, index: number) {
+  const cleanedPrompt = prompt.trim().replace(/\s+/g, " ");
+
+  if (cleanedPrompt) {
+    return cleanedPrompt;
+  }
+
+  return `Question ${index + 1}`;
+}
+
 async function copyQuizInvite(title: string, joinCode: string) {
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://qez.vercel.app";
   const joinLink = `${baseUrl}/?code=${joinCode}`;
@@ -297,7 +307,11 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
                   <div className="question-editor-header">
                     <div>
                       <h4>Question {questionIndex + 1}</h4>
-                      {isCollapsed ? <p className="question-editor-preview">{question.prompt || "Collapsed question"}</p> : null}
+                      {isCollapsed ? (
+                        <p className="question-editor-preview">
+                          {getCollapsedQuestionPreview(question.prompt, questionIndex)}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="question-editor-actions">
                       <button

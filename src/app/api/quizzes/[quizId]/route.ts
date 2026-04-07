@@ -9,22 +9,42 @@ import { createQuizSchema } from "@/lib/validators/quiz";
 
 const partialQuizUpdateSchema = z
   .object({
-    title: z.string().trim().min(3).max(150).optional(),
-    description: z.string().trim().max(1000).nullable().optional(),
+    title: z
+      .string()
+      .trim()
+      .min(3, "Quiz title should be at least 3 characters.")
+      .max(150, "Quiz title should stay under 150 characters.")
+      .optional(),
+    description: z
+      .string()
+      .trim()
+      .max(1000, "Description should stay under 1000 characters.")
+      .nullable()
+      .optional(),
     state: z.nativeEnum(QuizState).optional(),
-    startsAt: z.coerce.date().optional(),
-    endsAt: z.coerce.date().optional(),
+    startsAt: z.coerce
+      .date({
+        errorMap: () => ({ message: "Choose a valid start time." })
+      })
+      .optional(),
+    endsAt: z.coerce
+      .date({
+        errorMap: () => ({ message: "Choose a valid end time." })
+      })
+      .optional(),
     allowLeaderboard: z.boolean().optional(),
     leaderboardVisibility: z.enum(["HIDDEN", "TOP_10", "FULL"]).optional(),
     showResultsToStudents: z.boolean().optional(),
-    allowedParticipantEmails: z.array(z.string().trim().email()).optional(),
+    allowedParticipantEmails: z
+      .array(z.string().trim().email("One of the participant emails is not valid."))
+      .optional(),
     allowedEmailDomains: z
       .array(
         z
           .string()
           .trim()
-          .min(3)
-          .max(120)
+          .min(3, "Each allowed email domain should be at least 3 characters.")
+          .max(120, "Each allowed email domain should stay under 120 characters.")
           .transform((value) => value.replace(/^[@.]+/, "").toLowerCase())
       )
       .optional()

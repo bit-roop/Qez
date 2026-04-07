@@ -7,7 +7,8 @@ export const registerSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters long.")
     .max(100, "Password is too long."),
-  role: z.enum(["STUDENT", "TEACHER", "WEBINAR_HOST"])
+  role: z.enum(["STUDENT", "TEACHER", "WEBINAR_HOST"]),
+  captchaToken: z.string().trim().nullish()
 });
 
 export const loginSchema = z.object({
@@ -15,7 +16,8 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(8, "Password must be at least 8 characters long.")
-    .max(100, "Password is too long.")
+    .max(100, "Password is too long."),
+  captchaToken: z.string().trim().nullish()
 });
 
 export const forgotPasswordSchema = z.object({

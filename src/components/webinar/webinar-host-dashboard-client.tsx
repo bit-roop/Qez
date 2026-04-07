@@ -36,6 +36,8 @@ async function copyQuizInvite(title: string, joinCode: string) {
   await navigator.clipboard.writeText(message);
 }
 
+const WAITING_ROOM_COUNTDOWN_MS = 45 * 1000;
+
 export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClientProps) {
   const [quizzes, setQuizzes] = useState<WebinarQuiz[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +51,21 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
       Math.max(new Date(quiz.endsAt).getTime() - new Date(quiz.startsAt).getTime(), 0) ||
       1000 * 60 * 10;
     const startsAt = new Date();
+    const endsAt = new Date(startsAt.getTime() + durationMs);
+
+    return {
+      state: "ACTIVE" as const,
+      allowLeaderboard: true,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString()
+    };
+  }
+
+  function buildWaitingRoomPayload(quiz: WebinarQuiz) {
+    const durationMs =
+      Math.max(new Date(quiz.endsAt).getTime() - new Date(quiz.startsAt).getTime(), 0) ||
+      1000 * 60 * 10;
+    const startsAt = new Date(Date.now() + WAITING_ROOM_COUNTDOWN_MS);
     const endsAt = new Date(startsAt.getTime() + durationMs);
 
     return {
@@ -74,6 +91,18 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
 
     void loadQuizzes();
   }, []);
+
+  useEffect(() => {
+    const activeEndedQuiz = quizzes.find(
+      (quiz) => quiz.state === "ACTIVE" && new Date(quiz.endsAt).getTime() <= Date.now()
+    );
+
+    if (!activeEndedQuiz) {
+      return;
+    }
+
+    void updateQuizState(activeEndedQuiz.id, "COMPLETED");
+  }, [quizzes]);
 
   async function updateQuizState(
     quizId: string,
@@ -165,8 +194,21 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
           <div className="quiz-list">
             {quizzes.map((quiz) => (
               <article className="quiz-list-item webinar-quiz-card" key={quiz.id}>
+                {(() => {
+                  const now = Date.now();
+                  const startsAtMs = new Date(quiz.startsAt).getTime();
+                  const endsAtMs = new Date(quiz.endsAt).getTime();
+                  const isWaitingRoom = quiz.state === "ACTIVE" && now < startsAtMs;
+                  const isLiveRound =
+                    quiz.state === "ACTIVE" && now >= startsAtMs && now < endsAtMs;
+                  const isCompleted = quiz.state === "COMPLETED" || now >= endsAtMs;
+
+                  return (
+                    <>
                 <div className="quiz-list-meta">
-                  <span className={`pill pill-${quiz.state.toLowerCase()}`}>{quiz.state}</span>
+                  <span className={`pill ${isCompleted ? "pill-warning" : isLiveRound ? "pill-active" : isWaitingRoom ? "pill-warning-critical" : `pill-${quiz.state.toLowerCase()}`}`}>
+                    {isCompleted ? "COMPLETED" : isLiveRound ? "LIVE" : isWaitingRoom ? "WAITING ROOM" : quiz.state}
+                  </span>
                   <span className="pill pill--webinar">WEBINAR</span>
                 </div>
                 <h3>{quiz.title}</h3>
@@ -209,29 +251,33 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
                     Copy link
                   </button>
                   <button
-                    className={quiz.state === "ACTIVE" ? "primary-button" : "secondary-button"}
-                    disabled={quiz.state === "ACTIVE"}
-                    onClick={() => updateQuizState(quiz.id, "ACTIVE")}
+                    className={isWaitingRoom ? "primary-button" : "secondary-button"}
+                    disabled={isWaitingRoom || isLiveRound || isCompleted}
+                    onClick={() => updateQuizState(quiz.id, "ACTIVE", buildWaitingRoomPayload(quiz))}
                     type="button"
                   >
                     Open waiting room
                   </button>
                   <button
-                    className="secondary-button"
+                    className={isLiveRound ? "primary-button" : "secondary-button"}
+                    disabled={isCompleted}
                     onClick={() => updateQuizState(quiz.id, "ACTIVE", buildLiveStartPayload(quiz))}
                     type="button"
                   >
                     Start round now
                   </button>
                   <button
-                    className={quiz.state === "COMPLETED" ? "primary-button" : "secondary-button"}
-                    disabled={quiz.state === "COMPLETED"}
+                    className={isCompleted ? "primary-button" : "secondary-button"}
+                    disabled
                     onClick={() => updateQuizState(quiz.id, "COMPLETED")}
                     type="button"
                   >
-                    Complete
+                    {isCompleted ? "Completed" : "Auto-completes"}
                   </button>
                 </div>
+                    </>
+                  );
+                })()}
               </article>
             ))}
           </div>

@@ -43,7 +43,8 @@ export async function POST(request: Request) {
           userId: createdAdmin.id.toString(),
           email: createdAdmin.email,
           role: createdAdmin.role,
-          name: createdAdmin.name
+          name: createdAdmin.name,
+          emailVerified: true
         });
 
         return jsonOk({
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
       userId: user.id.toString(),
       email: user.email,
       role: user.role,
-      name: user.name
+      name: user.name,
+      emailVerified: true
     });
 
     return jsonOk({

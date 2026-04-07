@@ -70,3 +70,59 @@ Competitive quizzes, simplified`,
     delivered: true as const
   };
 }
+
+export async function sendEmailVerificationEmail(to: string, verificationLink: string) {
+  if (!isSmtpConfigured()) {
+    return {
+      delivered: false,
+      reason: "SMTP is not configured."
+    };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS
+    }
+  });
+
+  await transporter.sendMail({
+    from: SMTP_FROM_EMAIL,
+    to,
+    subject: "Verify your Qez email",
+    text: `Hello,
+
+Welcome to Qez.
+
+Verify your email address by opening the link below:
+${verificationLink}
+
+If you did not create this account, you can ignore this email.
+
+-
+Qez`,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #1c1c1c;">
+        <p>Hello,</p>
+        <p>Welcome to Qez.</p>
+        <p>Please verify your email address to activate your account.</p>
+        <p>
+          <a href="${verificationLink}" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#ff9a53;color:#0f0f0f;text-decoration:none;font-weight:700;">
+            Verify Email
+          </a>
+        </p>
+        <p>If the button does not work, use this link:</p>
+        <p style="word-break: break-all;">${verificationLink}</p>
+        <p>If you did not create this account, you can ignore this email.</p>
+        <p>-<br />Qez</p>
+      </div>
+    `
+  });
+
+  return {
+    delivered: true as const
+  };
+}

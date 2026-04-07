@@ -1,4 +1,4 @@
-import { AttemptStatus, QuizState } from "@prisma/client";
+import { AttemptStatus, Prisma, QuizState } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { getAuthUserFromRequest } from "@/lib/auth";
@@ -7,7 +7,7 @@ import {
   describeAllowedParticipants,
   isAllowedQuizParticipant
 } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { prisma, withDatabaseRetry } from "@/lib/prisma";
 import { attemptSubmissionSchema } from "@/lib/validators/attempt";
 
 function parseBigInt(rawValue: string) {
@@ -39,10 +39,12 @@ export async function POST(request: NextRequest) {
       return jsonError("Invalid quiz id.");
     }
 
-    const quiz = await prisma.quiz.findUnique({
+    const quiz = await withDatabaseRetry(() =>
+      prisma.quiz.findUnique({
       where: { id: quizId },
       select: {
         id: true,
+        title: true,
         mode: true,
         state: true,
         startsAt: true,
@@ -57,7 +59,8 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    });
+      })
+    );
 
     if (!quiz) {
       return jsonError("Quiz not found.", 404);
@@ -97,7 +100,8 @@ export async function POST(request: NextRequest) {
       return jsonError("Quiz has already ended.", 400);
     }
 
-    const existingAttempt = await prisma.attempt.findUnique({
+    const existingAttempt = await withDatabaseRetry(() =>
+      prisma.attempt.findUnique({
       where: {
         userId_quizId: {
           userId: user.id,
@@ -108,7 +112,8 @@ export async function POST(request: NextRequest) {
         id: true,
         status: true
       }
-    });
+      })
+    );
 
     if (
       existingAttempt &&
@@ -168,6 +173,8 @@ export async function POST(request: NextRequest) {
     }
 
     const attempt = await prisma.$transaction(async (tx) => {
+      const certificateTitle = `${quiz.title} Completion Certificate`;
+
       if (existingAttempt) {
         await tx.response.deleteMany({
           where: {
@@ -175,12 +182,14 @@ export async function POST(request: NextRequest) {
           }
         });
 
-        return tx.attempt.update({
+        const updatedAttempt = await tx.attempt.update({
           where: { id: existingAttempt.id },
           data: {
             status: AttemptStatus.SUBMITTED,
             totalScore,
             totalTimeSeconds,
+            draftAnswers: Prisma.JsonNull,
+            draftTimeSpent: Prisma.JsonNull,
             submittedAt: new Date(),
             responses: {
               create: scoredResponses.map((response) => ({
@@ -202,15 +211,39 @@ export async function POST(request: NextRequest) {
             }
           }
         });
+
+        await tx.certificateClaim.upsert({
+          where: {
+            userId_quizId: {
+              userId: user.id,
+              quizId
+            }
+          },
+          update: {
+            title: certificateTitle,
+            attemptId: updatedAttempt.id,
+            claimedAt: new Date()
+          },
+          create: {
+            userId: user.id,
+            quizId,
+            attemptId: updatedAttempt.id,
+            title: certificateTitle
+          }
+        });
+
+        return updatedAttempt;
       }
 
-      return tx.attempt.create({
+      const createdAttempt = await tx.attempt.create({
         data: {
           userId: user.id,
           quizId,
           status: AttemptStatus.SUBMITTED,
           totalScore,
           totalTimeSeconds,
+          draftAnswers: Prisma.JsonNull,
+          draftTimeSpent: Prisma.JsonNull,
           submittedAt: new Date(),
           responses: {
             create: scoredResponses.map((response) => ({
@@ -232,6 +265,28 @@ export async function POST(request: NextRequest) {
           }
         }
       });
+
+      await tx.certificateClaim.upsert({
+        where: {
+          userId_quizId: {
+            userId: user.id,
+            quizId
+          }
+        },
+        update: {
+          title: certificateTitle,
+          attemptId: createdAttempt.id,
+          claimedAt: new Date()
+        },
+        create: {
+          userId: user.id,
+          quizId,
+          attemptId: createdAttempt.id,
+          title: certificateTitle
+        }
+      });
+
+      return createdAttempt;
     });
 
     return jsonOk(

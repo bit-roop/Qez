@@ -128,7 +128,12 @@ export async function GET(
             id: true,
             email: true,
             role: true,
-            name: true
+            name: true,
+            institution: true,
+            bio: true,
+            avatarKey: true,
+            profileSerial: true,
+            emailVerified: true
           }
         });
 
@@ -168,7 +173,7 @@ export async function GET(
 
       const interval = setInterval(() => {
         void pushEvent();
-      }, 2500);
+      }, 6000);
 
       request.signal.addEventListener("abort", () => {
         clearInterval(interval);

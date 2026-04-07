@@ -88,6 +88,16 @@ function parseDomainRules(rawText: string) {
   ];
 }
 
+function getCollapsedQuestionPreview(prompt: string, index: number) {
+  const cleanedPrompt = prompt.trim().replace(/\s+/g, " ");
+
+  if (cleanedPrompt) {
+    return cleanedPrompt;
+  }
+
+  return `Question ${index + 1}`;
+}
+
 function downloadRosterTemplate() {
   const csv = "name,email\nAlice Student,alice@srmist.edu.in\nBob Student,bob@gmail.com\n";
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -657,7 +667,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                       <h4>Question {questionIndex + 1}</h4>
                       {isCollapsed ? (
                         <p className="question-editor-preview">
-                          {question.prompt || "Collapsed. Expand to edit this question."}
+                          {getCollapsedQuestionPreview(question.prompt, questionIndex)}
                         </p>
                       ) : null}
                     </div>

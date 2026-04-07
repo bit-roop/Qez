@@ -65,13 +65,18 @@ export async function getAuthUserFromRequest(
     const user = await withDatabaseRetry(() =>
       prisma.user.findUnique({
         where: { id: BigInt(payload.userId) },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          name: true
-        }
-      })
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        name: true,
+        institution: true,
+        bio: true,
+        avatarKey: true,
+        profileSerial: true,
+        emailVerified: true
+      }
+    })
     );
 
     return user;
@@ -111,7 +116,7 @@ export function resolveBaseUrl(request?: Request | NextRequest) {
   }
 
   if (APP_URL) {
-    return APP_URL.replace(/\/$/, "");
+    return APP_URL.trim().replace(/\/$/, "");
   }
 
   return "http://localhost:3000";

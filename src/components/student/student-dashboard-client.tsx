@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { apiFetch, clearSession } from "@/lib/client-auth";
+import { apiFetch, clearSession, downloadAuthenticatedFile } from "@/lib/client-auth";
 import { getProfileHoverLabel, getProfileSerial } from "@/lib/profile";
 import { AuthSession } from "@/types/client-auth";
 
@@ -33,36 +33,129 @@ type StudentDashboardClientProps = {
   session: AuthSession;
 };
 
-const roadmapItems = [
-  "Join a live or academic quiz using a code",
-  "See timer and question flow in a focused attempt layout",
-  "View leaderboard only when the quiz allows it",
-  "Review post-quiz results and flagged warnings"
-];
+type Achievement = {
+  id: string;
+  title: string;
+  claimedAt: string;
+  quiz: {
+    id: string;
+    title: string;
+    mode: "ACADEMIC" | "WEBINAR";
+  };
+  attempt?: {
+    totalScore: number;
+    totalTimeSeconds: number;
+    submittedAt?: string | null;
+  } | null;
+};
 
-const studentTools = [
-  "Quick join from the home page or your dashboard",
-  "Waiting rooms and synchronized webinar rounds",
-  "Result review only when the quiz owner allows it",
-  "Focus warnings that still keep your attempt moving"
-];
+type HistoryItem = {
+  id: string;
+  status: "SUBMITTED" | "AUTO_SUBMITTED";
+  totalScore: number;
+  totalTimeSeconds: number;
+  warningLevel: number;
+  suspicious: boolean;
+  submittedAt: string;
+  quiz: {
+    id: string;
+    title: string;
+    mode: "ACADEMIC" | "WEBINAR";
+    showResultsToStudents: boolean;
+  };
+};
 
 export function StudentDashboardClient({ session }: StudentDashboardClientProps) {
-  const [activePanel, setActivePanel] = useState<"join" | "experience">(() => {
+  const [activePanel, setActivePanel] = useState<"join" | "history" | "achievements">(() => {
     if (typeof window === "undefined") {
       return "join";
     }
 
     const saved = window.sessionStorage.getItem("qez.student.dashboard.tab");
-    return saved === "experience" ? "experience" : "join";
+    return saved === "history" || saved === "achievements" ? saved : "join";
   });
   const [quizCode, setQuizCode] = useState("");
   const [matchedQuiz, setMatchedQuiz] = useState<JoinQuizResponse["quiz"] | null>(null);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingAchievements, setIsLoadingAchievements] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [downloadingQuizId, setDownloadingQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     window.sessionStorage.setItem("qez.student.dashboard.tab", activePanel);
+  }, [activePanel]);
+
+  useEffect(() => {
+    if (activePanel !== "history") {
+      return;
+    }
+
+    let active = true;
+
+    async function loadHistory() {
+      try {
+        setIsLoadingHistory(true);
+        const data = await apiFetch<{ history: HistoryItem[] }>("/api/student/history", {
+          method: "GET"
+        });
+
+        if (active) {
+          setHistory(data.history);
+        }
+      } catch (caughtError) {
+        if (active) {
+          setError(caughtError instanceof Error ? caughtError.message : "Unable to load quiz history.");
+        }
+      } finally {
+        if (active) {
+          setIsLoadingHistory(false);
+        }
+      }
+    }
+
+    void loadHistory();
+
+    return () => {
+      active = false;
+    };
+  }, [activePanel]);
+
+  useEffect(() => {
+    if (activePanel !== "achievements") {
+      return;
+    }
+
+    let active = true;
+
+    async function loadAchievements() {
+      try {
+        setIsLoadingAchievements(true);
+        const data = await apiFetch<{ achievements: Achievement[] }>("/api/student/achievements", {
+          method: "GET"
+        });
+
+        if (active) {
+          setAchievements(data.achievements);
+        }
+      } catch (caughtError) {
+        if (active) {
+          setError(caughtError instanceof Error ? caughtError.message : "Unable to load achievements.");
+        }
+      } finally {
+        if (active) {
+          setIsLoadingAchievements(false);
+        }
+      }
+    }
+
+    void loadAchievements();
+
+    return () => {
+      active = false;
+    };
   }, [activePanel]);
 
   async function handleJoinLookup(event: FormEvent<HTMLFormElement>) {
@@ -139,11 +232,18 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
             Join Quiz
           </button>
           <button
-            className={`dashboard-tab ${activePanel === "experience" ? "dashboard-tab--active" : ""}`}
-            onClick={() => setActivePanel("experience")}
+            className={`dashboard-tab ${activePanel === "history" ? "dashboard-tab--active" : ""}`}
+            onClick={() => setActivePanel("history")}
             type="button"
           >
-            Student Experience
+            History
+          </button>
+          <button
+            className={`dashboard-tab ${activePanel === "achievements" ? "dashboard-tab--active" : ""}`}
+            onClick={() => setActivePanel("achievements")}
+            type="button"
+          >
+            Achievements
           </button>
         </div>
 
@@ -229,32 +329,105 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
               </article>
             ) : null}
           </article>
+        ) : activePanel === "history" ? (
+          <article className="dashboard-card dashboard-card--full">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">Quiz History</span>
+                <h2>Your participated quizzes</h2>
+              </div>
+            </div>
+
+            {isLoadingHistory ? (
+              <p className="section-copy">Loading your past quiz attempts...</p>
+            ) : history.length === 0 ? (
+              <div className="empty-state">
+                Your submitted quizzes will appear here once you complete them.
+              </div>
+            ) : (
+              <div className="experience-grid">
+                {history.map((item) => (
+                  <article className="preview-card preview-card--feature" key={item.id}>
+                    <span className={`pill ${item.quiz.mode === "WEBINAR" ? "pill--webinar" : "pill--academic"}`}>
+                      {item.quiz.mode}
+                    </span>
+                    <h3>{item.quiz.title}</h3>
+                    <p className="section-copy">
+                      Submitted on {new Date(item.submittedAt).toLocaleString()}.
+                    </p>
+                    <p className="section-copy">
+                      Score {item.totalScore} • Time {item.totalTimeSeconds}s • Warnings {item.warningLevel}
+                    </p>
+                    <p className="section-copy">
+                      {item.suspicious ? "Flagged for review." : "No suspicious flag on record."}
+                    </p>
+                    <div className="hero-actions">
+                      {item.quiz.showResultsToStudents ? (
+                        <Link className="primary-button" href={`/quizzes/${item.quiz.id}/result`}>
+                          Open result
+                        </Link>
+                      ) : (
+                        <span className="section-copy">Result is still hidden by the host.</span>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </article>
         ) : (
           <article className="dashboard-card dashboard-card--full">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Student Experience</span>
-                <h2>What this dashboard is built for</h2>
+                <span className="eyebrow">Achievements</span>
+                <h2>Claimed certificates</h2>
               </div>
+              <span className="question-badge">{achievements.length} earned</span>
             </div>
 
-            <div className="experience-grid">
-              {roadmapItems.map((item, index) => (
-                <article className="preview-card preview-card--feature" key={item}>
-                  <span className="question-badge">0{index + 1}</span>
-                  <p className="section-copy">{item}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="experience-grid">
-              {studentTools.map((item, index) => (
-                <article className="preview-card preview-card--feature" key={item}>
-                  <span className="question-badge">T{index + 1}</span>
-                  <p className="section-copy">{item}</p>
-                </article>
-              ))}
-            </div>
+            {isLoadingAchievements ? (
+              <p className="section-copy">Loading your claimed certificates...</p>
+            ) : achievements.length === 0 ? (
+              <div className="empty-state">
+                Claim a certificate from any completed result page and it will show up here.
+              </div>
+            ) : (
+              <div className="experience-grid">
+                {achievements.map((achievement) => (
+                  <article className="preview-card preview-card--feature" key={achievement.id}>
+                    <span className={`pill ${achievement.quiz.mode === "WEBINAR" ? "pill--webinar" : "pill--academic"}`}>
+                      {achievement.quiz.mode}
+                    </span>
+                    <h3>{achievement.title}</h3>
+                    <p className="section-copy">
+                      Claimed on {new Date(achievement.claimedAt).toLocaleDateString()}.
+                    </p>
+                    <p className="section-copy">
+                      Score {achievement.attempt?.totalScore ?? 0} • Time {achievement.attempt?.totalTimeSeconds ?? 0}s
+                    </p>
+                    <div className="hero-actions">
+                      <button
+                        className="secondary-button"
+                        disabled={downloadingQuizId === achievement.quiz.id}
+                        onClick={() => {
+                          setDownloadingQuizId(achievement.quiz.id);
+                          void downloadAuthenticatedFile(
+                            `/api/quizzes/${achievement.quiz.id}/certificate/pdf`,
+                            `${achievement.quiz.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-certificate.pdf`
+                          ).finally(() => setDownloadingQuizId((current) => (current === achievement.quiz.id ? null : current)));
+                        }}
+                        type="button"
+                      >
+                        {downloadingQuizId === achievement.quiz.id ? "Downloading..." : "Download PDF"}
+                      </button>
+                      <Link className="primary-button" href={`/quizzes/${achievement.quiz.id}/result`}>
+                        Open result
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </article>
         )}
       </section>

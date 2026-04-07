@@ -98,6 +98,10 @@ export function WinnerCertificateClient({ quizId }: WinnerCertificateClientProps
           <p className="section-copy">
             Printable recognition cards for the current webinar podium.
           </p>
+          <div className="certificate-metrics">
+            <span>{data.winners.length} winners shown</span>
+            <span>{data.winners[0]?.user.name ?? "No podium yet"}</span>
+          </div>
         </div>
         <div className="quiz-actions">
           <a
@@ -106,21 +110,38 @@ export function WinnerCertificateClient({ quizId }: WinnerCertificateClientProps
           >
             Export winners CSV
           </a>
-          <a className="secondary-button" href={`/api/quizzes/${quizId}/certificates/pdf`}>
-            Download PDF certificates
-          </a>
         </div>
       </article>
+
+      <section className="hero-strip">
+        <div>
+          <strong>{data.winners.length}</strong>
+          <span>Podium entries</span>
+        </div>
+        <div>
+          <strong>{data.winners[0]?.user.name ?? "TBD"}</strong>
+          <span>Current first place</span>
+        </div>
+        <div>
+          <strong>{data.winners[0]?.pointsAwarded ?? 0}</strong>
+          <span>Top prize points</span>
+        </div>
+      </section>
 
       <section className="certificate-grid">
         {data.winners.map((winner) => (
           <article className="certificate-card" key={winner.id}>
-            <span className="eyebrow">Qez Webinar Recognition</span>
-            <h2>{winner.user.name}</h2>
+            <div className="certificate-card__top">
+              <div>
+                <span className="eyebrow">Qez Webinar Recognition</span>
+                <h2>{winner.user.name}</h2>
+              </div>
+              <span className="question-badge">Rank #{winner.rank}</span>
+            </div>
             <p className="section-copy">
-              Awarded <strong>Rank #{winner.rank}</strong> in <strong>{data.quiz.title}</strong>.
+              Awarded for the live results in <strong>{data.quiz.title}</strong>.
             </p>
-            <div className="certificate-metrics">
+            <div className="certificate-metrics certificate-metrics--dense">
               <span>{winner.pointsAwarded} prize points</span>
               <span>{winner.totalScore} score</span>
               <span>{winner.totalTimeSeconds}s total time</span>
