@@ -177,8 +177,10 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const [clockNowMs, setClockNowMs] = useState(() => Date.now());
   const [webinarBoard, setWebinarBoard] = useState<LeaderboardSnapshot | null>(null);
   const [exitCountdownActive, setExitCountdownActive] = useState(false);
+  const [showExitWarningDialog, setShowExitWarningDialog] = useState(false);
   const exitIntentRef = useRef<number | null>(null);
   const isAutoSubmittingRef = useRef(false);
+  const lastFocusWarningAtRef = useRef(0);
 
   async function loadAttemptQuiz() {
     try {
@@ -411,10 +413,29 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       }
     }
 
+    function throttleSuspiciousEvent(eventType: SuspiciousEventType, message: string) {
+      const now = Date.now();
+
+      if (now - lastFocusWarningAtRef.current < 1500) {
+        return;
+      }
+
+      lastFocusWarningAtRef.current = now;
+      void logSuspiciousEvent(eventType, message);
+    }
+
     function handleVisibilityChange() {
       if (document.visibilityState === "hidden") {
-        void logSuspiciousEvent("TAB_SWITCH", "Tab switch detected. Stay focused on the quiz.");
+        throttleSuspiciousEvent("TAB_SWITCH", "Tab switch detected. Stay focused on the quiz.");
       }
+    }
+
+    function handleWindowBlur() {
+      throttleSuspiciousEvent("TAB_SWITCH", "Focus left the quiz window. This activity has been flagged.");
+    }
+
+    function handlePageHide() {
+      throttleSuspiciousEvent("OTHER", "You left the quiz page. Suspicious activity was logged.");
     }
 
     function handleContextMenu(event: MouseEvent) {
@@ -449,6 +470,8 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     document.addEventListener("copy", handleCopy);
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("pagehide", handlePageHide);
 
     return () => {
       active = false;
@@ -457,6 +480,8 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       document.removeEventListener("copy", handleCopy);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("pagehide", handlePageHide);
     };
   }, [data?.quiz.canAttemptNow, quizId, result]);
 
@@ -501,10 +526,12 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       if (!withinWindow) {
         exitIntentRef.current = now;
         setExitCountdownActive(true);
+        setShowExitWarningDialog(true);
         setWarningMessage("Press back again to exit and submit the quiz.");
         window.history.pushState({ qezAttemptGuard: true }, "", window.location.href);
         window.setTimeout(() => {
           setExitCountdownActive(false);
+          setShowExitWarningDialog(false);
         }, ACADEMIC_EXIT_WINDOW_MS);
         return;
       }
@@ -740,6 +767,22 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
               <p className="section-copy">
                 Warning level: {warningCount}. Suspicious activity is logged for review.
               </p>
+              {showExitWarningDialog ? (
+                <div className="attempt-warning-actions">
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setShowExitWarningDialog(false);
+                      setExitCountdownActive(false);
+                      setWarningMessage(null);
+                      exitIntentRef.current = null;
+                    }}
+                    type="button"
+                  >
+                    Continue without leaving
+                  </button>
+                </div>
+              ) : null}
               {warningCount >= 3 ? (
                 <p className="status-banner status-banner--error">This attempt is now flagged as suspicious.</p>
               ) : null}

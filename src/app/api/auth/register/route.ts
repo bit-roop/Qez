@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { hashPassword, signAuthToken } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { DatabaseConnectionError, prisma, withDatabaseRetry } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validators/auth";
 
 export async function POST(request: Request) {
@@ -16,20 +16,22 @@ export async function POST(request: Request) {
     const { email, name, password, role } = parsed.data;
     const passwordHash = await hashPassword(password);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        passwordHash,
-        role
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true
-      }
-    });
+    const user = await withDatabaseRetry(() =>
+      prisma.user.create({
+        data: {
+          email,
+          name,
+          passwordHash,
+          role
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true
+        }
+      })
+    );
 
     const token = signAuthToken({
       userId: user.id.toString(),
@@ -45,6 +47,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return jsonError("An account with this email already exists.", 409);
+    }
+
+    if (error instanceof DatabaseConnectionError) {
+      return jsonError("Database connection was interrupted. Please try again.", 503);
     }
 
     console.error("register error", error);

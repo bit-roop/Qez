@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, withDatabaseRetry } from "@/lib/prisma";
 import { AuthTokenPayload, AuthUser } from "@/types/auth";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -62,15 +62,17 @@ export async function getAuthUserFromRequest(
 
   try {
     const payload = verifyAuthToken(token);
-    const user = await prisma.user.findUnique({
-      where: { id: BigInt(payload.userId) },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        name: true
-      }
-    });
+    const user = await withDatabaseRetry(() =>
+      prisma.user.findUnique({
+        where: { id: BigInt(payload.userId) },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          name: true
+        }
+      })
+    );
 
     return user;
   } catch {

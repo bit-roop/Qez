@@ -1,6 +1,6 @@
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { comparePassword, signAuthToken } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { DatabaseConnectionError, prisma, withDatabaseRetry } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validators/auth";
 
 export async function POST(request: Request) {
@@ -13,9 +13,11 @@ export async function POST(request: Request) {
     }
 
     const { email, password } = parsed.data;
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
+    const user = await withDatabaseRetry(() =>
+      prisma.user.findUnique({
+        where: { email }
+      })
+    );
 
     if (!user) {
       return jsonError("Invalid email or password.", 401);
@@ -48,6 +50,10 @@ export async function POST(request: Request) {
       })
     });
   } catch (error) {
+    if (error instanceof DatabaseConnectionError) {
+      return jsonError("Database connection was interrupted. Please try again.", 503);
+    }
+
     console.error("login error", error);
     return jsonError("Unable to login right now.", 500);
   }

@@ -138,11 +138,13 @@ export function QuizAnalyticsClient({ quizId }: QuizAnalyticsClientProps) {
     accuracyPercent: question.accuracyPercent
   }));
 
+  const analyticsLabel = data.quiz.mode === "WEBINAR" ? "Host Analytics" : "Teacher Analytics";
+
   return (
     <section className="analytics-shell">
       <article className="analytics-panel analytics-panel--hero">
         <div>
-          <span className="eyebrow">Teacher Analytics</span>
+          <span className="eyebrow">{analyticsLabel}</span>
           <h1>{data.quiz.title}</h1>
           <p className="section-copy">
             Review performance, pacing, and suspicious activity patterns for this quiz.

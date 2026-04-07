@@ -1,33 +1,26 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Syne } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import { ReactNode } from "react";
 import { ScrollRestoration } from "@/components/scroll-restoration";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
-const jakarta = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-body",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800"]
+  display: "swap"
 });
 
-const syne = Syne({
+const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-heading",
-  display: "swap",
-  weight: ["700", "800"]
+  display: "swap"
 });
 
 export const metadata: Metadata = {
   title: "Qez",
-  description: "Smart quizzes for classrooms and live events.",
-  icons: {
-    icon: "/qez-logo.png",
-    shortcut: "/qez-logo.png",
-    apple: "/qez-logo.png"
-  }
+  description: "Smart quizzes for classrooms and live events."
 };
 
 type RootLayoutProps = {
@@ -37,7 +30,7 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body className={`${jakarta.variable} ${syne.variable} app-body`}>
+      <body className={`${inter.variable} ${playfair.variable} app-body`}>
         <ScrollRestoration />
         <SiteHeader />
         {children}

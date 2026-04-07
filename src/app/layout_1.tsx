@@ -22,12 +22,7 @@ const syne = Syne({
 
 export const metadata: Metadata = {
   title: "Qez",
-  description: "Smart quizzes for classrooms and live events.",
-  icons: {
-    icon: "/qez-logo.png",
-    shortcut: "/qez-logo.png",
-    apple: "/qez-logo.png"
-  }
+  description: "Smart quizzes for classrooms and live events."
 };
 
 type RootLayoutProps = {
