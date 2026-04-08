@@ -40,6 +40,14 @@ type QuizAnalyticsData = {
     accuracyPercent: number;
     avgTimeSeconds: number;
   }[];
+  scoreBands: {
+    label: string;
+    count: number;
+  }[];
+  warningBands: {
+    label: string;
+    count: number;
+  }[];
 };
 
 type QuizAnalyticsClientProps = {
@@ -105,11 +113,38 @@ export function QuizAnalyticsClient({ quizId }: QuizAnalyticsClientProps) {
     );
   }
 
+  const difficultyBreakdown = ["EASY", "MEDIUM", "HARD"].map((difficulty) => {
+    const questions = data.questions.filter((question) => question.difficulty === difficulty);
+    const averageAccuracy =
+      questions.length > 0
+        ? Number(
+            (
+              questions.reduce((sum, question) => sum + question.accuracyPercent, 0) / questions.length
+            ).toFixed(1)
+          )
+        : 0;
+
+    return {
+      difficulty,
+      count: questions.length,
+      averageAccuracy
+    };
+  });
+
+  const paceSegments = data.questions.map((question) => ({
+    id: question.id,
+    label: `Q${question.displayOrder}`,
+    avgTimeSeconds: question.avgTimeSeconds,
+    accuracyPercent: question.accuracyPercent
+  }));
+
+  const analyticsLabel = data.quiz.mode === "WEBINAR" ? "Host Analytics" : "Teacher Analytics";
+
   return (
     <section className="analytics-shell">
       <article className="analytics-panel analytics-panel--hero">
         <div>
-          <span className="eyebrow">Teacher Analytics</span>
+          <span className="eyebrow">{analyticsLabel}</span>
           <h1>{data.quiz.title}</h1>
           <p className="section-copy">
             Review performance, pacing, and suspicious activity patterns for this quiz.
@@ -138,6 +173,50 @@ export function QuizAnalyticsClient({ quizId }: QuizAnalyticsClientProps) {
         <article className="metric-card">
           <strong>{data.quiz.suspiciousAttempts}</strong>
           <span>Suspicious attempts</span>
+        </article>
+      </section>
+
+      <section className="analytics-ring-grid">
+        <article className="analytics-ring-card">
+          <div
+            className="analytics-ring"
+            style={{ ["--ring-value" as string]: `${Math.min((data.quiz.avgScore / Math.max(data.quiz.totalQuestions, 1)) * 100, 100)}%` }}
+          >
+            <div>
+              <strong>{data.quiz.avgScore}</strong>
+              <span>avg score</span>
+            </div>
+          </div>
+          <h3>Score Efficiency</h3>
+          <p className="section-copy">Average score compared to total quiz size.</p>
+        </article>
+
+        <article className="analytics-ring-card">
+          <div
+            className="analytics-ring analytics-ring--warning"
+            style={{ ["--ring-value" as string]: `${data.quiz.submittedAttempts > 0 ? (data.quiz.suspiciousAttempts / data.quiz.submittedAttempts) * 100 : 0}%` }}
+          >
+            <div>
+              <strong>{data.quiz.suspiciousAttempts}</strong>
+              <span>flagged</span>
+            </div>
+          </div>
+          <h3>Integrity Watch</h3>
+          <p className="section-copy">Share of submitted attempts that were flagged.</p>
+        </article>
+
+        <article className="analytics-ring-card">
+          <div
+            className="analytics-ring analytics-ring--time"
+            style={{ ["--ring-value" as string]: `${Math.min((data.quiz.avgTimeSeconds / Math.max(data.questions.reduce((sum, question) => sum + question.avgTimeSeconds, 0), 1)) * 100, 100)}%` }}
+          >
+            <div>
+              <strong>{data.quiz.avgTimeSeconds}s</strong>
+              <span>avg time</span>
+            </div>
+          </div>
+          <h3>Pacing Load</h3>
+          <p className="section-copy">How heavy the average completion time feels overall.</p>
         </article>
       </section>
 
@@ -184,6 +263,125 @@ export function QuizAnalyticsClient({ quizId }: QuizAnalyticsClientProps) {
         </article>
       </section>
 
+      <section className="analytics-grid analytics-grid--charts">
+        <article className="analytics-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Difficulty View</span>
+              <h2>Accuracy by difficulty</h2>
+            </div>
+          </div>
+          <div className="analytics-mini-chart">
+            {difficultyBreakdown.map((item) => (
+              <article className="analytics-mini-chart-card" key={item.difficulty}>
+                <div className="analytics-question-top">
+                  <span className="pill pill-outline">{item.difficulty}</span>
+                  <span>{item.count} questions</span>
+                </div>
+                <strong>{item.averageAccuracy}%</strong>
+                <span>average accuracy</span>
+                <div className="analytics-bar">
+                  <div className="analytics-bar-fill" style={{ width: `${item.averageAccuracy}%` }} />
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="analytics-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Pace View</span>
+              <h2>Question timing map</h2>
+            </div>
+          </div>
+          <div className="analytics-timeline">
+            {paceSegments.map((segment) => (
+              <div className="analytics-timeline-row" key={segment.id}>
+                <span>{segment.label}</span>
+                <div className="analytics-timeline-track">
+                  <div
+                    className="analytics-timeline-fill"
+                    style={{ width: `${Math.min(segment.avgTimeSeconds / 60, 1) * 100}%` }}
+                  />
+                </div>
+                <strong>{segment.avgTimeSeconds}s</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="analytics-grid analytics-grid--charts">
+        <article className="analytics-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Score Spread</span>
+              <h2>Attempt distribution</h2>
+            </div>
+          </div>
+          <div className="analytics-donut-grid">
+            {data.scoreBands.map((band) => (
+              <article className="analytics-donut-card" key={band.label}>
+                <div
+                  className="analytics-ring analytics-ring--compact"
+                  style={{
+                    ["--ring-value" as string]: `${
+                      data.quiz.submittedAttempts > 0
+                        ? (band.count / data.quiz.submittedAttempts) * 100
+                        : 0
+                    }%`
+                  }}
+                >
+                  <div>
+                    <strong>{band.count}</strong>
+                    <span>attempts</span>
+                  </div>
+                </div>
+                <h3>{band.label}</h3>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="analytics-panel">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Integrity Mix</span>
+              <h2>Warning level distribution</h2>
+            </div>
+          </div>
+          <div className="analytics-donut-grid">
+            {data.warningBands.map((band) => (
+              <article className="analytics-donut-card" key={band.label}>
+                <div
+                  className={`analytics-ring analytics-ring--compact ${
+                    band.label === "Flagged"
+                      ? "analytics-ring--warning"
+                      : band.label === "Warned"
+                        ? "analytics-ring--time"
+                        : ""
+                  }`}
+                  style={{
+                    ["--ring-value" as string]: `${
+                      data.quiz.submittedAttempts > 0
+                        ? (band.count / data.quiz.submittedAttempts) * 100
+                        : 0
+                    }%`
+                  }}
+                >
+                  <div>
+                    <strong>{band.count}</strong>
+                    <span>attempts</span>
+                  </div>
+                </div>
+                <h3>{band.label}</h3>
+              </article>
+            ))}
+          </div>
+        </article>
+      </section>
+
       <article className="analytics-panel">
         <div className="section-heading">
           <div>
@@ -218,4 +416,3 @@ export function QuizAnalyticsClient({ quizId }: QuizAnalyticsClientProps) {
     </section>
   );
 }
-

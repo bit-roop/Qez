@@ -86,17 +86,42 @@ Required if you want:
 
 Set to `true` to show the Google sign-in button in the UI after you configure Google OAuth.
 
-### `RESEND_API_KEY`
+### `SMTP_HOST`
 
-Useful for:
+SMTP mail server hostname for Nodemailer.
 
-- sending password reset emails automatically
+### `SMTP_PORT`
 
-### `RESEND_FROM_EMAIL`
+SMTP port, usually `587` for TLS or `465` for secure SMTP.
 
-Useful for:
+### `SMTP_SECURE`
 
-- sending password reset emails automatically
+Set to `true` for secure SMTP connections, often used with port `465`.
+
+### `SMTP_USER`
+
+SMTP username.
+
+### `SMTP_PASS`
+
+SMTP password or app password.
+
+### `SMTP_FROM_EMAIL`
+
+From-address used for password reset emails.
+
+### `ADMIN_EMAIL`
+
+Optional. If set together with `ADMIN_PASSWORD`, the first successful login at `/admin/login`
+with those exact credentials will create an `ADMIN` account automatically.
+
+### `ADMIN_PASSWORD`
+
+Optional. Used only for the first admin bootstrap flow at `/admin/login`.
+
+### `ADMIN_NAME`
+
+Optional display name for the bootstrapped admin account.
 
 ### `REDIS_URL`
 
@@ -156,7 +181,7 @@ NEXT_PUBLIC_GOOGLE_AUTH_ENABLED="true"
 
 The forgot-password flow now works in two modes:
 
-- If `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set, it sends email automatically
+- If SMTP variables are configured, Nodemailer sends the email automatically
 - If they are not set, the API returns the reset link directly for local/demo use
 
 ## 9. Vercel Deployment Checklist
@@ -170,8 +195,12 @@ APP_URL="https://your-vercel-domain.vercel.app"
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 NEXT_PUBLIC_GOOGLE_AUTH_ENABLED="true"
-RESEND_API_KEY="your-resend-api-key"
-RESEND_FROM_EMAIL="your-from-email"
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="587"
+SMTP_SECURE="false"
+SMTP_USER="your-smtp-user"
+SMTP_PASS="your-smtp-password"
+SMTP_FROM_EMAIL="noreply@example.com"
 ```
 
 Notes:

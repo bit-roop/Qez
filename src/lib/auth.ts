@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, withDatabaseRetry } from "@/lib/prisma";
 import { AuthTokenPayload, AuthUser } from "@/types/auth";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -62,15 +62,22 @@ export async function getAuthUserFromRequest(
 
   try {
     const payload = verifyAuthToken(token);
-    const user = await prisma.user.findUnique({
-      where: { id: BigInt(payload.userId) },
+    const user = await withDatabaseRetry(() =>
+      prisma.user.findUnique({
+        where: { id: BigInt(payload.userId) },
       select: {
         id: true,
         email: true,
         role: true,
-        name: true
+        name: true,
+        institution: true,
+        bio: true,
+        avatarKey: true,
+        profileSerial: true,
+        emailVerified: true
       }
-    });
+    })
+    );
 
     return user;
   } catch {
@@ -87,6 +94,45 @@ export function getGoogleOAuthConfig() {
     clientId: GOOGLE_CLIENT_ID,
     clientSecret: GOOGLE_CLIENT_SECRET,
     redirectUri: `${APP_URL}/api/auth/google/callback`
+  };
+}
+
+export function resolveBaseUrl(request?: Request | NextRequest) {
+  if (request) {
+    const forwardedProto = request.headers.get("x-forwarded-proto");
+    const forwardedHost = request.headers.get("x-forwarded-host");
+    const host = forwardedHost ?? request.headers.get("host");
+
+    if (host) {
+      const protocol = forwardedProto ?? (host.includes("localhost") ? "http" : "https");
+      return `${protocol}://${host}`;
+    }
+
+    try {
+      return new URL(request.url).origin;
+    } catch {
+      // fall through to env/default below
+    }
+  }
+
+  if (APP_URL) {
+    return APP_URL.trim().replace(/\/$/, "");
+  }
+
+  return "http://localhost:3000";
+}
+
+export function getGoogleOAuthConfigForRequest(request?: Request | NextRequest) {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return null;
+  }
+
+  const baseUrl = resolveBaseUrl(request);
+
+  return {
+    clientId: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    redirectUri: `${baseUrl}/api/auth/google/callback`
   };
 }
 

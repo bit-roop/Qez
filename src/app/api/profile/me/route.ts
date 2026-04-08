@@ -2,10 +2,13 @@ import { z } from "zod";
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk, serializeBigInt } from "@/lib/api";
 import { getAuthUserFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withDatabaseRetry } from "@/lib/prisma";
 
 const profileSchema = z.object({
   name: z.string().trim().min(2).max(80),
+  institution: z.string().trim().max(120).optional().nullable(),
+  bio: z.string().trim().max(240).optional().nullable(),
+  avatarKey: z.string().trim().max(40).optional().nullable()
 });
 
 export async function GET(request: NextRequest) {
@@ -38,18 +41,28 @@ export async function PATCH(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "Invalid profile update.");
     }
 
-    const profile = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        name: parsed.data.name
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true
-      }
-    });
+    const profile = await withDatabaseRetry(() =>
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: parsed.data.name,
+          institution: parsed.data.institution || null,
+          bio: parsed.data.bio || null,
+          avatarKey: parsed.data.avatarKey || null
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          institution: true,
+          bio: true,
+          avatarKey: true,
+          profileSerial: true,
+          emailVerified: true
+        }
+      })
+    );
 
     return jsonOk({ profile: serializeBigInt(profile) });
   } catch (error) {

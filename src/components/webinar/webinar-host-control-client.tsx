@@ -66,6 +66,18 @@ type UpdateQuizResponse = {
   quiz: HostQuiz;
 };
 
+type SuspiciousAttemptsData = {
+  attempts: {
+    id: string;
+    warningLevel: number;
+    suspicious: boolean;
+    user: {
+      id: string;
+      name: string;
+    };
+  }[];
+};
+
 type WebinarHostControlClientProps = {
   quizId: string;
   session: AuthSession;
@@ -78,16 +90,23 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [revealWinners, setRevealWinners] = useState(false);
+  const [flaggedAttempts, setFlaggedAttempts] = useState<SuspiciousAttemptsData["attempts"]>([]);
 
   useEffect(() => {
     let active = true;
 
-    async function load() {
+    async function load(showLoading = false) {
       try {
-        setIsLoading(true);
-        const [quizData, leaderboardData] = await Promise.all([
+        if (showLoading) {
+          setIsLoading(true);
+        }
+
+        const [quizData, leaderboardData, suspiciousData] = await Promise.all([
           apiFetch<HostQuizResponse>(`/api/quizzes/${quizId}`, { method: "GET" }),
-          apiFetch<LeaderboardData>(`/api/quizzes/${quizId}/leaderboard`, { method: "GET" })
+          apiFetch<LeaderboardData>(`/api/quizzes/${quizId}/leaderboard`, { method: "GET" }),
+          apiFetch<SuspiciousAttemptsData>(`/api/quizzes/${quizId}/suspicious-attempts`, {
+            method: "GET"
+          })
         ]);
 
         if (!active) {
@@ -96,6 +115,7 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
 
         setQuiz(quizData.quiz);
         setLeaderboard(leaderboardData);
+        setFlaggedAttempts(suspiciousData.attempts);
         setError(null);
       } catch (caughtError) {
         if (!active) {
@@ -104,16 +124,16 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
 
         setError(caughtError instanceof Error ? caughtError.message : "Unable to load host control room.");
       } finally {
-        if (active) {
+        if (active && showLoading) {
           setIsLoading(false);
         }
       }
     }
 
-    void load();
+    void load(true);
     const interval = window.setInterval(() => {
       void load();
-    }, 5000);
+    }, 8000);
 
     return () => {
       active = false;
@@ -122,6 +142,16 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
   }, [quizId]);
 
   const podium = useMemo(() => leaderboard?.topPerformers ?? [], [leaderboard]);
+  const flaggedCount = flaggedAttempts.filter((attempt) => attempt.suspicious).length;
+  const warningCount = flaggedAttempts.reduce((sum, attempt) => sum + attempt.warningLevel, 0);
+  const totalCycleSeconds = useMemo(
+    () => Math.max(
+      Math.round((new Date(quiz?.endsAt ?? Date.now()).getTime() - new Date(quiz?.startsAt ?? Date.now()).getTime()) / 1000),
+      1
+    ),
+    [quiz?.endsAt, quiz?.startsAt]
+  );
+  const WAITING_ROOM_COUNTDOWN_SECONDS = 45;
 
   async function patchQuiz(body: Record<string, unknown>, successMessage: string) {
     try {
@@ -177,10 +207,42 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
             <button
               className={quiz.state === "ACTIVE" ? "primary-button" : "secondary-button"}
               disabled={quiz.state === "ACTIVE"}
-              onClick={() => patchQuiz({ state: "ACTIVE", allowLeaderboard: true }, "Webinar round is now live.")}
+              onClick={() => {
+                const startsAt = new Date(Date.now() + WAITING_ROOM_COUNTDOWN_SECONDS * 1000);
+                const endsAt = new Date(startsAt.getTime() + totalCycleSeconds * 1000);
+
+                void patchQuiz(
+                  {
+                    state: "ACTIVE",
+                    allowLeaderboard: true,
+                    startsAt: startsAt.toISOString(),
+                    endsAt: endsAt.toISOString()
+                  },
+                  "Waiting room is open. Participants will stay on standby until the live round starts."
+                );
+              }}
               type="button"
             >
-              Go live
+              Open waiting room
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                const startsAt = new Date();
+                const endsAt = new Date(startsAt.getTime() + totalCycleSeconds * 1000);
+                void patchQuiz(
+                  {
+                    state: "ACTIVE",
+                    allowLeaderboard: true,
+                    startsAt: startsAt.toISOString(),
+                    endsAt: endsAt.toISOString()
+                  },
+                  "Synchronized webinar round started."
+                );
+              }}
+              type="button"
+            >
+              Start round now
             </button>
             <button
               className={quiz.state === "COMPLETED" ? "primary-button" : "secondary-button"}
@@ -219,6 +281,7 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
           <strong>{quiz.state}</strong>
           <span>Join code {quiz.joinCode}</span>
           <span>{leaderboard.totalParticipants} participants on the board</span>
+          <span>{flaggedCount} flagged attempts • {warningCount} total warnings</span>
           <span>Last refresh {new Date(leaderboard.lastUpdatedAt).toLocaleTimeString()}</span>
         </div>
       </article>
@@ -269,6 +332,12 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
             <Link className="secondary-button" href={`/quizzes/${quizId}/leaderboard`}>
               Open public leaderboard
             </Link>
+            <Link className="secondary-button" href={`/quizzes/${quizId}/certificates`}>
+              Winner certificates
+            </Link>
+            <a className="secondary-button" href={`/api/quizzes/${quizId}/winners/export`}>
+              Export winners CSV
+            </a>
             <Link className="secondary-button" href={`/quizzes/${quizId}/analytics`}>
               Open analytics
             </Link>
@@ -281,6 +350,43 @@ export function WebinarHostControlClient({ quizId, session }: WebinarHostControl
           </div>
         </article>
       </section>
+
+      <article className="leaderboard-panel">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Integrity Watch</span>
+            <h2>Recent flagged activity</h2>
+          </div>
+          <Link className="secondary-button" href={`/quizzes/${quizId}/monitor`}>
+            Open full review
+          </Link>
+        </div>
+
+        {flaggedAttempts.length === 0 ? (
+          <p className="section-copy">No suspicious activity has been recorded for this webinar yet.</p>
+        ) : (
+          <div className="leaderboard-table">
+            <div className="leaderboard-row leaderboard-row--head">
+              <span>Student</span>
+              <span>Status</span>
+              <span>Warnings</span>
+              <span>Review</span>
+            </div>
+            {flaggedAttempts.slice(0, 5).map((attempt) => (
+              <div className="leaderboard-row" key={attempt.id}>
+                <span>{attempt.user.name}</span>
+                <span>{attempt.suspicious ? "Flagged" : "Observed"}</span>
+                <span>{attempt.warningLevel}</span>
+                <span>
+                  <Link className="secondary-button" href={`/quizzes/${quizId}/attempts/${attempt.id}`}>
+                    Open
+                  </Link>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
 
       <article className="leaderboard-panel">
         <div className="section-heading">

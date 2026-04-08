@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { jsonError } from "@/lib/api";
 import { getAuthUserFromRequest } from "@/lib/auth";
+import { getProfileSerial } from "@/lib/profile";
 import { canManageQuiz } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -60,6 +61,7 @@ export async function GET(
             submittedAt: true,
             user: {
               select: {
+                id: true,
                 name: true,
                 email: true
               }
@@ -80,6 +82,7 @@ export async function GET(
     const rows = [
       [
         "Attempt ID",
+        "Profile Serial",
         "Student Name",
         "Student Email",
         "Status",
@@ -92,6 +95,7 @@ export async function GET(
       ],
       ...quiz.attempts.map((attempt) => [
         attempt.id.toString(),
+        `QEZ-${getProfileSerial(attempt.user.id.toString())}`,
         attempt.user.name,
         attempt.user.email,
         attempt.status,

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/client-auth";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch, getStoredToken } from "@/lib/client-auth";
+import { getProfileHoverLabel } from "@/lib/profile";
 
 type AttemptQuizData = {
   quiz: {
@@ -20,6 +21,7 @@ type AttemptQuizData = {
     questionCount: number;
     canAttemptNow: boolean;
     owner: {
+      id: string;
       name: string;
       role: "TEACHER" | "ADMIN" | "WEBINAR_HOST";
     };
@@ -44,8 +46,12 @@ type AttemptQuizData = {
     warningLevel: number;
     suspicious: boolean;
     submittedAt?: string | null;
+    draftAnswers?: Record<string, "A" | "B" | "C" | "D"> | null;
+    draftTimeSpent?: Record<string, number> | null;
+    lastRecoveredAt?: string | null;
   } | null;
   availabilityMessage?: string | null;
+  serverNow: string;
 };
 
 type SubmitAttemptResponse = {
@@ -66,6 +72,20 @@ type SubmitAttemptResponse = {
   negativeMarkingConfigured: boolean;
 };
 
+type LeaderboardSnapshot = {
+  entries: {
+    id: string;
+    rank: number;
+    pointsAwarded: number;
+    totalScore: number;
+    totalTimeSeconds: number;
+    user: {
+      id: string;
+      name: string;
+    };
+  }[];
+};
+
 type QuizAttemptClientProps = {
   quizId: string;
 };
@@ -78,6 +98,73 @@ type SuspiciousEventType =
   | "COPY_ATTEMPT"
   | "OTHER";
 
+const WEBINAR_REVEAL_SECONDS = 5;
+const ACADEMIC_EXIT_WINDOW_MS = 2800;
+
+function getAttemptStorageKey(quizId: string) {
+  return `qez.attempt.cache.${quizId}`;
+}
+
+function buildAttemptPayload(
+  data: AttemptQuizData,
+  selectedAnswers: Record<string, "A" | "B" | "C" | "D">,
+  timeSpent: Record<string, number>
+) {
+  return data.quiz.questions
+    .filter((question) => selectedAnswers[question.id])
+    .map((question) => ({
+      questionId: question.id,
+      selectedOptionKey: selectedAnswers[question.id],
+      timeTakenSeconds: Math.min(timeSpent[question.id] ?? 0, question.timeLimitSeconds)
+    }));
+}
+
+function getWebinarPhase(
+  questions: AttemptQuizData["quiz"]["questions"],
+  startsAt: string,
+  nowMs: number
+) {
+  const startMs = new Date(startsAt).getTime();
+  const elapsedSeconds = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+
+  let cursor = 0;
+
+  for (let index = 0; index < questions.length; index += 1) {
+    const question = questions[index];
+    const questionStart = cursor;
+    const questionEnd = questionStart + question.timeLimitSeconds;
+
+    if (elapsedSeconds < questionEnd) {
+      return {
+        phase: "question" as const,
+        questionIndex: index,
+        secondsRemaining: questionEnd - elapsedSeconds,
+        elapsedInQuestion: elapsedSeconds - questionStart
+      };
+    }
+
+    const revealEnd = questionEnd + WEBINAR_REVEAL_SECONDS;
+
+    if (elapsedSeconds < revealEnd) {
+      return {
+        phase: "reveal" as const,
+        questionIndex: index,
+        secondsRemaining: revealEnd - elapsedSeconds,
+        elapsedInQuestion: question.timeLimitSeconds
+      };
+    }
+
+    cursor = revealEnd;
+  }
+
+  return {
+    phase: "finished" as const,
+    questionIndex: Math.max(questions.length - 1, 0),
+    secondsRemaining: 0,
+    elapsedInQuestion: questions[questions.length - 1]?.timeLimitSeconds ?? 0
+  };
+}
+
 export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const [data, setData] = useState<AttemptQuizData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -89,6 +176,15 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const [result, setResult] = useState<SubmitAttemptResponse | null>(null);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [warningCount, setWarningCount] = useState(0);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [clockNowMs, setClockNowMs] = useState(() => Date.now());
+  const [webinarBoard, setWebinarBoard] = useState<LeaderboardSnapshot | null>(null);
+  const [exitCountdownActive, setExitCountdownActive] = useState(false);
+  const [showExitWarningDialog, setShowExitWarningDialog] = useState(false);
+  const exitIntentRef = useRef<number | null>(null);
+  const isAutoSubmittingRef = useRef(false);
+  const lastFocusWarningAtRef = useRef(0);
+  const lastDraftSyncRef = useRef(0);
 
   async function loadAttemptQuiz() {
     try {
@@ -97,6 +193,38 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
         method: "GET"
       });
       setData(nextData);
+      setServerOffsetMs(new Date(nextData.serverNow).getTime() - Date.now());
+
+      const rawStored = window.localStorage.getItem(getAttemptStorageKey(quizId));
+      if (rawStored) {
+        try {
+          const parsed = JSON.parse(rawStored) as {
+            selectedAnswers?: Record<string, "A" | "B" | "C" | "D">;
+            timeSpent?: Record<string, number>;
+            currentIndex?: number;
+          };
+          setSelectedAnswers(parsed.selectedAnswers ?? {});
+          setTimeSpent(parsed.timeSpent ?? {});
+          setCurrentIndex(parsed.currentIndex ?? 0);
+        } catch {
+          window.localStorage.removeItem(getAttemptStorageKey(quizId));
+        }
+      }
+
+      if (nextData.attempt?.draftAnswers && typeof nextData.attempt.draftAnswers === "object") {
+        setSelectedAnswers(nextData.attempt.draftAnswers as Record<string, "A" | "B" | "C" | "D">);
+      }
+
+      if (nextData.attempt?.draftTimeSpent && typeof nextData.attempt.draftTimeSpent === "object") {
+        const draftTimeSpent = nextData.attempt.draftTimeSpent as Record<string, number> & {
+          __currentQuestionIndex?: number;
+        };
+        const { __currentQuestionIndex, ...questionTimes } = draftTimeSpent;
+        setTimeSpent(questionTimes);
+        if (typeof __currentQuestionIndex === "number") {
+          setCurrentIndex(__currentQuestionIndex);
+        }
+      }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to load quiz.");
     } finally {
@@ -109,22 +237,88 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   }, [quizId]);
 
   useEffect(() => {
+    const interval = window.setInterval(() => {
+      setClockNowMs(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      getAttemptStorageKey(quizId),
+      JSON.stringify({
+        selectedAnswers,
+        timeSpent,
+        currentIndex
+      })
+    );
+  }, [currentIndex, data, quizId, selectedAnswers, timeSpent]);
+
+  useEffect(() => {
+    if (!data || result || !data.quiz.canAttemptNow) {
+      return;
+    }
+
+    const now = Date.now();
+
+    if (now - lastDraftSyncRef.current < 4000) {
+      return;
+    }
+
+    lastDraftSyncRef.current = now;
+
+    void apiFetch(`/api/quizzes/${quizId}/attempt`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        selectedAnswers,
+        timeSpent,
+        currentQuestionIndex: currentIndex
+      })
+    }).catch(() => undefined);
+  }, [currentIndex, data, quizId, result, selectedAnswers, timeSpent]);
+
+  useEffect(() => {
     setWarningCount(data?.attempt?.warningLevel ?? 0);
   }, [data?.attempt?.warningLevel]);
 
   const questions = data?.quiz.questions ?? [];
-  const currentQuestion = questions[currentIndex];
-  const currentQuestionElapsed = currentQuestion ? timeSpent[currentQuestion.id] ?? 0 : 0;
-  const currentQuestionRemaining = currentQuestion
-    ? Math.max(currentQuestion.timeLimitSeconds - currentQuestionElapsed, 0)
-    : 0;
-  const answeredCount = useMemo(
-    () => Object.keys(selectedAnswers).length,
-    [selectedAnswers]
+  const isWebinar = data?.quiz.mode === "WEBINAR";
+  const webinarPhase = useMemo(() => {
+    if (!data || !isWebinar) {
+      return null;
+    }
+
+    return getWebinarPhase(questions, data.quiz.startsAt, clockNowMs + serverOffsetMs);
+  }, [clockNowMs, data, isWebinar, questions, serverOffsetMs]);
+
+  const activeQuestionIndex =
+    isWebinar && webinarPhase ? Math.max(webinarPhase.questionIndex, 0) : currentIndex;
+  const currentQuestion = questions[activeQuestionIndex];
+  const currentQuestionElapsed =
+    isWebinar && webinarPhase
+      ? webinarPhase.elapsedInQuestion
+      : currentQuestion
+        ? timeSpent[currentQuestion.id] ?? 0
+        : 0;
+  const currentQuestionRemaining =
+    isWebinar && webinarPhase
+      ? webinarPhase.secondsRemaining
+      : currentQuestion
+        ? Math.max(currentQuestion.timeLimitSeconds - currentQuestionElapsed, 0)
+        : 0;
+  const answeredCount = useMemo(() => Object.keys(selectedAnswers).length, [selectedAnswers]);
+  const webinarWaiting = Boolean(
+    isWebinar && data && new Date(data.quiz.startsAt).getTime() > clockNowMs + serverOffsetMs
   );
+  const webinarFinished = Boolean(isWebinar && webinarPhase?.phase === "finished");
 
   useEffect(() => {
-    if (!currentQuestion || result || !data?.quiz.canAttemptNow) {
+    if (!currentQuestion || result || !data?.quiz.canAttemptNow || isWebinar) {
       return;
     }
 
@@ -137,10 +331,10 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [currentQuestion, data?.quiz.canAttemptNow, result]);
+  }, [currentQuestion, data?.quiz.canAttemptNow, isWebinar, result]);
 
   useEffect(() => {
-    if (!currentQuestion || result || !data?.quiz.canAttemptNow) {
+    if (!currentQuestion || result || !data?.quiz.canAttemptNow || isWebinar) {
       return;
     }
 
@@ -156,15 +350,49 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     if (!isSubmitting) {
       void handleSubmit();
     }
-  }, [
-    currentIndex,
-    currentQuestion,
-    currentQuestionRemaining,
-    data?.quiz.canAttemptNow,
-    isSubmitting,
-    questions.length,
-    result
-  ]);
+  }, [currentIndex, currentQuestion, currentQuestionRemaining, data?.quiz.canAttemptNow, isSubmitting, isWebinar, questions.length, result]);
+
+  useEffect(() => {
+    if (!isWebinar || !data || webinarWaiting || webinarFinished || result) {
+      return;
+    }
+
+    if (webinarPhase?.phase === "finished" && !isSubmitting) {
+      void handleSubmit();
+    }
+  }, [data, isSubmitting, isWebinar, result, webinarFinished, webinarPhase, webinarWaiting]);
+
+  useEffect(() => {
+    if (!data || !isWebinar) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadWebinarBoard() {
+      try {
+        const response = await apiFetch<LeaderboardSnapshot>(`/api/quizzes/${quizId}/leaderboard`, {
+          method: "GET"
+        });
+
+        if (active) {
+          setWebinarBoard(response);
+        }
+      } catch {
+        // silent support view
+      }
+    }
+
+    void loadWebinarBoard();
+    const interval = window.setInterval(() => {
+      void loadWebinarBoard();
+    }, 6000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [data, isWebinar, quizId]);
 
   useEffect(() => {
     if (!data?.quiz.canAttemptNow || result) {
@@ -227,14 +455,33 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
             : current
         );
       } catch {
-        // Keep the attempt flow alive even if logging fails.
+        // keep flow alive even if logging fails
       }
+    }
+
+    function throttleSuspiciousEvent(eventType: SuspiciousEventType, message: string) {
+      const now = Date.now();
+
+      if (now - lastFocusWarningAtRef.current < 1500) {
+        return;
+      }
+
+      lastFocusWarningAtRef.current = now;
+      void logSuspiciousEvent(eventType, message);
     }
 
     function handleVisibilityChange() {
       if (document.visibilityState === "hidden") {
-        void logSuspiciousEvent("TAB_SWITCH", "Tab switch detected. Stay focused on the quiz.");
+        throttleSuspiciousEvent("TAB_SWITCH", "Tab switch detected. Stay focused on the quiz.");
       }
+    }
+
+    function handleWindowBlur() {
+      throttleSuspiciousEvent("TAB_SWITCH", "Focus left the quiz window. This activity has been flagged.");
+    }
+
+    function handlePageHide() {
+      throttleSuspiciousEvent("OTHER", "You left the quiz page. Suspicious activity was logged.");
     }
 
     function handleContextMenu(event: MouseEvent) {
@@ -254,19 +501,13 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
 
       if (devtoolsShortcut) {
         event.preventDefault();
-        void logSuspiciousEvent(
-          "DEVTOOLS_ATTEMPT",
-          "Developer tools shortcut detected. This activity has been flagged."
-        );
+        void logSuspiciousEvent("DEVTOOLS_ATTEMPT", "Developer tools shortcut detected. This activity has been flagged.");
       }
     }
 
     function handleFullscreenChange() {
       if (!document.fullscreenElement) {
-        void logSuspiciousEvent(
-          "FULLSCREEN_EXIT",
-          "Fullscreen exit detected. Please return to the attempt screen."
-        );
+        void logSuspiciousEvent("FULLSCREEN_EXIT", "Fullscreen exit detected. Please return to the attempt screen.");
       }
     }
 
@@ -275,6 +516,8 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     document.addEventListener("copy", handleCopy);
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("pagehide", handlePageHide);
 
     return () => {
       active = false;
@@ -283,10 +526,83 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       document.removeEventListener("copy", handleCopy);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("pagehide", handlePageHide);
     };
   }, [data?.quiz.canAttemptNow, quizId, result]);
 
-  async function handleSubmit() {
+  async function submitWithKeepalive() {
+    if (!data || isAutoSubmittingRef.current) {
+      return;
+    }
+
+    isAutoSubmittingRef.current = true;
+    const token = getStoredToken();
+
+    try {
+      await fetch("/api/attempts/submit", {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          quizId: data.quiz.id,
+          responses: buildAttemptPayload(data, selectedAnswers, timeSpent)
+        })
+      });
+    } catch {
+      // best effort only
+    }
+  }
+
+  useEffect(() => {
+    if (!data || isWebinar || result || !data.quiz.canAttemptNow) {
+      return;
+    }
+
+    window.history.pushState({ qezAttemptGuard: true }, "", window.location.href);
+
+    function handlePopState() {
+      const now = Date.now();
+      const withinWindow =
+        exitIntentRef.current !== null && now - exitIntentRef.current < ACADEMIC_EXIT_WINDOW_MS;
+
+      if (!withinWindow) {
+        exitIntentRef.current = now;
+        setExitCountdownActive(true);
+        setShowExitWarningDialog(true);
+        setWarningMessage("Press back again to exit and submit the quiz.");
+        window.history.pushState({ qezAttemptGuard: true }, "", window.location.href);
+        window.setTimeout(() => {
+          setExitCountdownActive(false);
+          setShowExitWarningDialog(false);
+        }, ACADEMIC_EXIT_WINDOW_MS);
+        return;
+      }
+
+      void handleSubmit(true).finally(() => {
+        window.location.href = "/dashboard/student";
+      });
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+      void submitWithKeepalive();
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [data, isWebinar, result, selectedAnswers, timeSpent]);
+
+  async function handleSubmit(isSilent = false) {
     if (!data) {
       return;
     }
@@ -295,31 +611,43 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     setIsSubmitting(true);
 
     try {
-      const responses = data.quiz.questions
-        .filter((question) => selectedAnswers[question.id])
-        .map((question) => ({
-          questionId: question.id,
-          selectedOptionKey: selectedAnswers[question.id],
-          timeTakenSeconds: Math.min(
-            timeSpent[question.id] ?? 0,
-            question.timeLimitSeconds
-          )
-        }));
-
       const submitResult = await apiFetch<SubmitAttemptResponse>("/api/attempts/submit", {
         method: "POST",
         body: JSON.stringify({
           quizId: data.quiz.id,
-          responses
+          responses: buildAttemptPayload(data, selectedAnswers, timeSpent)
         })
       });
 
       setResult(submitResult);
+      window.localStorage.removeItem(getAttemptStorageKey(quizId));
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to submit attempt.");
+      if (!isSilent) {
+        setError(caughtError instanceof Error ? caughtError.message : "Unable to submit attempt.");
+      }
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function chooseAnswer(optionKey: "A" | "B" | "C" | "D") {
+    if (!currentQuestion) {
+      return;
+    }
+
+    if (isWebinar && selectedAnswers[currentQuestion.id]) {
+      return;
+    }
+
+    setSelectedAnswers((current) => ({
+      ...current,
+      [currentQuestion.id]: optionKey
+    }));
+
+    setTimeSpent((current) => ({
+      ...current,
+      [currentQuestion.id]: Math.min(Math.max(currentQuestionElapsed, 1), currentQuestion.timeLimitSeconds)
+    }));
   }
 
   if (isLoading) {
@@ -375,7 +703,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
           </div>
           <p className="section-copy">
             {result.leaderboardEligible
-              ? "This attempt is eligible for webinar ranking logic."
+              ? "Your webinar responses were locked in against the live room timeline."
               : "Your academic attempt has been securely scored on the server."}
           </p>
           <div className="hero-actions">
@@ -391,21 +719,83 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     );
   }
 
+  if (isWebinar && webinarWaiting) {
+    return (
+      <section className="attempt-shell">
+        <article className="attempt-stage">
+          <span className="eyebrow">Waiting Room</span>
+          <h1>{data.quiz.title}</h1>
+          <p className="section-copy">
+            You&apos;re checked in. Wait for the host to start the synchronized round. Everyone will see the same question and timer together.
+          </p>
+          <div className="attempt-result-grid">
+            <article className="metric-card">
+              <strong>{data.quiz.joinCode}</strong>
+              <span>Room code</span>
+            </article>
+            <article className="metric-card">
+              <strong>{new Date(data.quiz.startsAt).toLocaleTimeString()}</strong>
+              <span>Current scheduled start</span>
+            </article>
+            <article className="metric-card">
+              <strong title={getProfileHoverLabel(data.quiz.owner)}>{data.quiz.owner.name}</strong>
+              <span>Host</span>
+            </article>
+          </div>
+        </article>
+      </section>
+    );
+  }
+
+  if (isWebinar && webinarFinished && !result) {
+    return (
+      <section className="attempt-shell">
+        <article className="attempt-stage">
+          <span className="eyebrow">Round Complete</span>
+          <h1>{data.quiz.title}</h1>
+          <p className="section-copy">
+            The live room has ended. We&apos;re wrapping up your webinar attempt now.
+          </p>
+          <div className="attempt-result-grid">
+            <article className="metric-card">
+              <strong>{answeredCount}</strong>
+              <span>Answers locked</span>
+            </article>
+            <article className="metric-card">
+              <strong>{warningCount}</strong>
+              <span>Warnings logged</span>
+            </article>
+            <article className="metric-card">
+              <strong>{data.quiz.questionCount}</strong>
+              <span>Total questions</span>
+            </article>
+          </div>
+          <p className="section-copy">
+            {isSubmitting
+              ? "Submitting your webinar attempt..."
+              : "Your answers are no longer changing. You can wait here while the submission finishes."}
+          </p>
+        </article>
+      </section>
+    );
+  }
+
+  const lockedAnswer = selectedAnswers[currentQuestion.id];
+  const showWebinarReveal = Boolean(isWebinar && webinarPhase?.phase === "reveal");
+
   return (
     <section className="attempt-shell">
       <aside className="attempt-sidebar">
         <span className="eyebrow">Qez Arena</span>
         <h1>{data.quiz.title}</h1>
         <p className="section-copy">
-          {data.quiz.mode === "WEBINAR"
-            ? "Fast, correct answers matter most here. Move quickly, but don’t guess blindly."
-            : "Focus on accuracy and pace. Your submission will be scored on the server after you finish."}
+          {isWebinar
+            ? "Live room mode is on. Answers lock instantly and the next stage stays synchronized for everyone."
+            : "Focus on accuracy and pace. Leaving the screen will submit your academic attempt."}
         </p>
 
         <div className="attempt-sidebar-meta">
-          <span className={`pill ${data.quiz.mode === "WEBINAR" ? "pill--webinar" : "pill--academic"}`}>
-            {data.quiz.mode}
-          </span>
+          <span className={`pill ${isWebinar ? "pill--webinar" : "pill--academic"}`}>{data.quiz.mode}</span>
           <span className="pill pill-outline">{data.quiz.questionCount} questions</span>
           <span className={`pill ${warningCount >= 3 ? "pill-warning-critical" : "pill-warning"}`}>
             Warnings: {warningCount}
@@ -418,110 +808,154 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
             <span>Questions answered</span>
           </div>
           <div className="attempt-progress-track">
-            <div
-              className="attempt-progress-fill"
-              style={{
-                width: `${(answeredCount / data.quiz.questionCount) * 100}%`
-              }}
-            />
+            <div className="attempt-progress-fill" style={{ width: `${(answeredCount / data.quiz.questionCount) * 100}%` }} />
           </div>
         </div>
 
         <div className="attempt-sidebar-note">
-          <strong>Auto-flow is on</strong>
+          <strong>{isWebinar ? "Synced round is on" : "Secure exit is on"}</strong>
           <span>
-            When a question timer reaches zero, Qez moves to the next question automatically and
-            submits the final screen for you.
+            {isWebinar
+              ? "Rejoining brings you back to the live room timeline and the current active question."
+              : "Press back again to exit and submit your quiz."}
           </span>
         </div>
 
-        <div className="attempt-index-grid">
-          {questions.map((question, index) => (
-            <button
-              className={`attempt-index-pill ${index === currentIndex ? "attempt-index-pill--active" : ""} ${selectedAnswers[question.id] ? "attempt-index-pill--done" : ""}`}
-              key={question.id}
-              onClick={() => setCurrentIndex(index)}
-              type="button"
-            >
-              {index + 1}
-            </button>
-          ))}
-        </div>
+        {!isWebinar ? (
+          <div className="attempt-index-grid">
+            {questions.map((question, index) => (
+              <button
+                className={`attempt-index-pill ${index === currentIndex ? "attempt-index-pill--active" : ""} ${selectedAnswers[question.id] ? "attempt-index-pill--done" : ""}`}
+                key={question.id}
+                onClick={() => setCurrentIndex(index)}
+                type="button"
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </aside>
 
       <article className="attempt-stage">
         {warningMessage ? (
           <div className="attempt-warning-overlay">
             <div className="attempt-warning-card">
-              <span className="eyebrow">Focus Warning</span>
+              <span className="eyebrow">{exitCountdownActive ? "Exit Warning" : "Focus Warning"}</span>
               <h3>{warningMessage}</h3>
               <p className="section-copy">
-                Warning level: {warningCount}. Suspicious activity is logged for teacher review.
+                Warning level: {warningCount}. Suspicious activity is logged for review.
               </p>
+              {showExitWarningDialog ? (
+                <div className="attempt-warning-actions">
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setShowExitWarningDialog(false);
+                      setExitCountdownActive(false);
+                      setWarningMessage(null);
+                      exitIntentRef.current = null;
+                    }}
+                    type="button"
+                  >
+                    Continue without leaving
+                  </button>
+                </div>
+              ) : null}
               {warningCount >= 3 ? (
-                <p className="status-banner status-banner--error">
-                  This attempt is now flagged as suspicious.
-                </p>
+                <p className="status-banner status-banner--error">This attempt is now flagged as suspicious.</p>
               ) : null}
             </div>
           </div>
         ) : null}
 
-        <div className="attempt-stage-top">
-          <div>
-            <span className="eyebrow">Question {currentQuestion.displayOrder}</span>
-            <h2>{currentQuestion.prompt}</h2>
-            <div className="attempt-question-meta">
-              <span className="pill pill-outline">{currentQuestion.difficulty}</span>
-              <span className="pill pill-outline">
-                {selectedAnswers[currentQuestion.id]
-                  ? `Selected: ${selectedAnswers[currentQuestion.id]}`
-                  : "No answer selected"}
-              </span>
+        {showWebinarReveal ? (
+          <div className="attempt-webinar-reveal">
+            <span className="eyebrow">Round Update</span>
+            <h2>Question {currentQuestion.displayOrder} locked</h2>
+            <p className="section-copy">
+              {lockedAnswer ? `Your answer ${lockedAnswer} is locked.` : "No answer was locked before the timer ended."} Next question begins in {currentQuestionRemaining}s.
+            </p>
+            <div className="leaderboard-table">
+              <div className="leaderboard-row leaderboard-row--head">
+                <span>Rank</span>
+                <span>Name</span>
+                <span>Points</span>
+                <span>Score</span>
+                <span>Time</span>
+              </div>
+              {(webinarBoard?.entries ?? []).slice(0, 5).map((entry) => (
+                <div className="leaderboard-row" key={entry.id}>
+                  <span className="leaderboard-rank">#{entry.rank}</span>
+                  <span title={getProfileHoverLabel({ id: entry.user.id, name: entry.user.name })}>{entry.user.name}</span>
+                  <span>{entry.pointsAwarded}</span>
+                  <span>{entry.totalScore}</span>
+                  <span>{entry.totalTimeSeconds}s</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="attempt-timer-card">
-            <strong>{currentQuestionRemaining}s</strong>
-            <span>Question timer</span>
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="attempt-stage-top">
+              <div>
+                <span className="eyebrow">
+                  Question {currentQuestion.displayOrder}
+                  {isWebinar ? " • Live room" : ""}
+                </span>
+                <h2>{currentQuestion.prompt}</h2>
+                <div className="attempt-question-meta">
+                  <span className="pill pill-outline">{currentQuestion.difficulty}</span>
+                  <span className="pill pill-outline">
+                    {lockedAnswer ? `Selected: ${lockedAnswer}` : "No answer selected"}
+                  </span>
+                </div>
+              </div>
+              <div className="attempt-timer-card">
+                <strong>{currentQuestionRemaining}s</strong>
+                <span>{isWebinar ? "Shared room timer" : "Question timer"}</span>
+              </div>
+            </div>
 
-        {data.availabilityMessage ? (
-          <p className="status-banner status-banner--error">{data.availabilityMessage}</p>
-        ) : null}
+            {data.availabilityMessage && !isWebinar ? (
+              <p className="status-banner status-banner--error">{data.availabilityMessage}</p>
+            ) : null}
 
-        <div className="attempt-options-grid">
-          {currentQuestion.options.map((option) => {
-            const isSelected = selectedAnswers[currentQuestion.id] === option.optionKey;
+            <div className="attempt-options-grid">
+              {currentQuestion.options.map((option) => {
+                const isSelected = selectedAnswers[currentQuestion.id] === option.optionKey;
+                const disabled = isWebinar ? Boolean(lockedAnswer) : false;
 
-            return (
-              <button
-                className={`attempt-option ${isSelected ? "attempt-option--selected" : ""}`}
-                key={option.optionKey}
-                onClick={() =>
-                  setSelectedAnswers((current) => ({
-                    ...current,
-                    [currentQuestion.id]: option.optionKey
-                  }))
-                }
-                type="button"
-              >
-                <span className="attempt-option-key">{option.optionKey}</span>
-                <span>{option.optionText}</span>
-              </button>
-            );
-          })}
-        </div>
+                return (
+                  <button
+                    className={`attempt-option ${isSelected ? "attempt-option--selected" : ""}`}
+                    disabled={disabled && !isSelected}
+                    key={option.optionKey}
+                    onClick={() => chooseAnswer(option.optionKey)}
+                    type="button"
+                  >
+                    <span className="attempt-option-key">{option.optionKey}</span>
+                    <span>{option.optionText}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         <div className="attempt-stage-footer">
-          <button
-            className="secondary-button"
-            disabled={currentIndex === 0}
-            onClick={() => setCurrentIndex((current) => Math.max(current - 1, 0))}
-            type="button"
-          >
-            Previous
-          </button>
+          {!isWebinar ? (
+            <button
+              className="secondary-button"
+              disabled={currentIndex === 0}
+              onClick={() => setCurrentIndex((current) => Math.max(current - 1, 0))}
+              type="button"
+            >
+              Previous
+            </button>
+          ) : (
+            <div className="question-badge">Synchronized webinar flow</div>
+          )}
 
           <div className="attempt-stage-actions">
             <button
@@ -533,38 +967,44 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
             >
               Focus mode
             </button>
-            <button
-              className="secondary-button"
-              onClick={() =>
-                setSelectedAnswers((current) => {
-                  const nextAnswers = { ...current };
-                  delete nextAnswers[currentQuestion.id];
-                  return nextAnswers;
-                })
-              }
-              type="button"
-            >
-              Clear choice
-            </button>
-            {currentIndex < questions.length - 1 ? (
+            {!isWebinar ? (
               <button
-                className="primary-button"
+                className="secondary-button"
                 onClick={() =>
-                  setCurrentIndex((current) => Math.min(current + 1, questions.length - 1))
+                  setSelectedAnswers((current) => {
+                    const nextAnswers = { ...current };
+                    delete nextAnswers[currentQuestion.id];
+                    return nextAnswers;
+                  })
                 }
                 type="button"
               >
-                Next question
+                Clear choice
               </button>
+            ) : null}
+            {!isWebinar ? (
+              currentIndex < questions.length - 1 ? (
+                <button
+                  className="primary-button"
+                  onClick={() => setCurrentIndex((current) => Math.min(current + 1, questions.length - 1))}
+                  type="button"
+                >
+                  Next question
+                </button>
+              ) : (
+                <button
+                  className="primary-button"
+                  disabled={!data.quiz.canAttemptNow || isSubmitting}
+                  onClick={() => void handleSubmit()}
+                  type="button"
+                >
+                  {isSubmitting ? "Submitting..." : "Submit quiz"}
+                </button>
+              )
             ) : (
-              <button
-                className="primary-button"
-                disabled={!data.quiz.canAttemptNow || isSubmitting}
-                onClick={handleSubmit}
-                type="button"
-              >
-                {isSubmitting ? "Submitting..." : "Submit quiz"}
-              </button>
+              <span className="section-copy">
+                {lockedAnswer ? "Answer locked for this question." : "Pick once to lock your answer for the room."}
+              </span>
             )}
           </div>
         </div>

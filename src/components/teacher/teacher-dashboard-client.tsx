@@ -88,6 +88,16 @@ function parseDomainRules(rawText: string) {
   ];
 }
 
+function getCollapsedQuestionPreview(prompt: string, index: number) {
+  const cleanedPrompt = prompt.trim().replace(/\s+/g, " ");
+
+  if (cleanedPrompt) {
+    return cleanedPrompt;
+  }
+
+  return `Question ${index + 1}`;
+}
+
 function downloadRosterTemplate() {
   const csv = "name,email\nAlice Student,alice@srmist.edu.in\nBob Student,bob@gmail.com\n";
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -99,6 +109,13 @@ function downloadRosterTemplate() {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+}
+
+async function copyQuizInvite(title: string, joinCode: string) {
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://qez.vercel.app";
+  const joinLink = `${baseUrl}/?code=${joinCode}`;
+  const message = `Hey, join the quiz "${title}" on Qez.\nOpen ${joinLink}\nYour room code is: ${joinCode}`;
+  await navigator.clipboard.writeText(message);
 }
 
 export function TeacherDashboardClient({ session }: TeacherDashboardClientProps) {
@@ -117,10 +134,12 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState([emptyQuestion(1)]);
+  const [collapsedQuestions, setCollapsedQuestions] = useState<number[]>([]);
   const [allowedEmailsInput, setAllowedEmailsInput] = useState("");
   const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
   const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
   const [uploadedRosterFileName, setUploadedRosterFileName] = useState<string | null>(null);
+  const [latestInvite, setLatestInvite] = useState<{ title: string; joinCode: string } | null>(null);
 
   const quizStats = {
     total: quizzes.length,
@@ -322,6 +341,15 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
           displayOrder: nextIndex + 1
         }))
     );
+    setCollapsedQuestions((current) =>
+      current.filter((item) => item !== index).map((item) => (item > index ? item - 1 : item))
+    );
+  }
+
+  function toggleQuestionCollapse(index: number) {
+    setCollapsedQuestions((current) =>
+      current.includes(index) ? current.filter((item) => item !== index) : [...current, index]
+    );
   }
 
   function moveQuestion(index: number, targetIndex: number) {
@@ -391,7 +419,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     const payload = {
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
-      mode: String(formData.get("mode") ?? "ACADEMIC"),
+      mode: "ACADEMIC",
       startsAt: String(formData.get("startsAt") ?? ""),
       endsAt: String(formData.get("endsAt") ?? ""),
       allowLeaderboard: formData.get("allowLeaderboard") === "on",
@@ -416,6 +444,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       setAllowedDomainsInput("");
       setUploadedRosterEmails([]);
       setUploadedRosterFileName(null);
+      setLatestInvite({ title: data.quiz.title, joinCode: data.quiz.joinCode });
       form.reset();
       setMessage(`Quiz created successfully. Join code: ${data.quiz.joinCode}`);
     } catch (caughtError) {
@@ -494,13 +523,10 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                 <input name="title" placeholder="DBMS Midterm Assessment" required type="text" />
               </label>
 
-              <label className="field">
+              <div className="field field-readonly">
                 <span>Mode</span>
-                <select defaultValue="ACADEMIC" name="mode">
-                  <option value="ACADEMIC">Academic</option>
-                  <option value="WEBINAR">Webinar</option>
-                </select>
-              </label>
+                <div className="field-static">Academic</div>
+              </div>
             </div>
 
             <label className="field">
@@ -599,6 +625,25 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
               </p>
             ) : null}
 
+            {latestInvite ? (
+              <div className="upload-hint-card">
+                <strong>Share this quiz</strong>
+                <p className="section-copy">
+                  Invite learners with code <strong>{latestInvite.joinCode}</strong> or copy a ready-to-send Qez message.
+                </p>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    void copyQuizInvite(latestInvite.title, latestInvite.joinCode);
+                    setMessage("Share message copied.");
+                  }}
+                  type="button"
+                >
+                  Copy link and invite text
+                </button>
+              </div>
+            ) : null}
+
             <div className="question-builder-header">
               <div>
                 <span className="eyebrow">Questions</span>
@@ -608,6 +653,9 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
 
             <div className="question-stack">
               {questions.map((question, questionIndex) => (
+                (() => {
+                  const isCollapsed = collapsedQuestions.includes(questionIndex);
+                  return (
                 <article
                   className={`question-editor ${draggedQuestionIndex === questionIndex ? "question-editor--dragging" : ""}`}
                   key={question.displayOrder}
@@ -615,7 +663,14 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   onDrop={() => handleQuestionDrop(questionIndex)}
                 >
                   <div className="question-editor-header">
-                    <h4>Question {questionIndex + 1}</h4>
+                    <div>
+                      <h4>Question {questionIndex + 1}</h4>
+                      {isCollapsed ? (
+                        <p className="question-editor-preview">
+                          {getCollapsedQuestionPreview(question.prompt, questionIndex)}
+                        </p>
+                      ) : null}
+                    </div>
                     <div className="question-editor-actions">
                       <button
                         aria-label={`Drag question ${questionIndex + 1}`}
@@ -629,6 +684,13 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                         <span />
                         <span />
                       </button>
+                      <button
+                        className="secondary-button question-action-button"
+                        onClick={() => toggleQuestionCollapse(questionIndex)}
+                        type="button"
+                      >
+                        {isCollapsed ? "Expand" : "Collapse"}
+                      </button>
                       {questions.length > 1 ? (
                         <button
                           className="text-button button-reset"
@@ -641,6 +703,8 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                     </div>
                   </div>
 
+                  {!isCollapsed ? (
+                    <>
                   <label className="field">
                     <span>Prompt</span>
                     <textarea
@@ -727,7 +791,11 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                       </label>
                     ))}
                   </div>
+                    </>
+                  ) : null}
                 </article>
+                  );
+                })()
               ))}
             </div>
 
@@ -794,11 +862,6 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   <Link className="secondary-button" href={`/quizzes/${quiz.id}`}>
                     View quiz
                   </Link>
-                  {quiz.mode === "WEBINAR" ? (
-                    <Link className="primary-button" href={`/quizzes/${quiz.id}/host`}>
-                      Host room
-                    </Link>
-                  ) : null}
                   {quiz._count?.attempts === 0 ? (
                     <Link className="primary-button" href={`/quizzes/${quiz.id}`}>
                       Edit quiz
@@ -835,6 +898,16 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                     type="button"
                   >
                     Export CSV
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      void copyQuizInvite(quiz.title, quiz.joinCode);
+                      setMessage(`Invite copied for "${quiz.title}".`);
+                    }}
+                    type="button"
+                  >
+                    Copy link
                   </button>
                   <button
                     className={getStateActionClass(quiz.state, "DRAFT")}

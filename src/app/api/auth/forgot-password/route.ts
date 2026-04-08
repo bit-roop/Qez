@@ -1,11 +1,8 @@
 import { jsonError, jsonOk } from "@/lib/api";
-import { createRandomToken, hashOpaqueToken } from "@/lib/auth";
+import { createRandomToken, hashOpaqueToken, resolveBaseUrl } from "@/lib/auth";
+import { isSmtpConfigured, sendPasswordResetEmail } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
 import { forgotPasswordSchema } from "@/lib/validators/auth";
-
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
-const APP_URL = process.env.APP_URL;
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +21,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return jsonOk({
-        message: "If that email exists, a reset link has been prepared."
+        message: "If that email exists, a reset link would appear here in local/demo mode."
       });
     }
 
@@ -46,32 +43,18 @@ export async function POST(request: Request) {
       }
     });
 
-    const resetLink = `${APP_URL ?? "http://localhost:3000"}/reset-password?token=${rawToken}`;
+    const resetLink = `${resolveBaseUrl(request)}/reset-password?token=${rawToken}`;
 
-    if (RESEND_API_KEY && RESEND_FROM_EMAIL) {
-      const emailResponse = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: RESEND_FROM_EMAIL,
-          to: user.email,
-          subject: "Reset your Qez password",
-          html: `<p>Hello ${user.name},</p><p>Reset your password here:</p><p><a href="${resetLink}">${resetLink}</a></p><p>This link expires in 1 hour.</p>`
-        })
+    if (isSmtpConfigured()) {
+      await sendPasswordResetEmail(user.email, resetLink);
+
+      return jsonOk({
+        message: "Password reset email sent successfully."
       });
-
-      if (emailResponse.ok) {
-        return jsonOk({
-          message: "Password reset link sent."
-        });
-      }
     }
 
     return jsonOk({
-      message: "Password reset link prepared. Email delivery was unavailable, so use this local reset link:",
+      message: "SMTP is not configured yet, so use this reset link to continue:",
       resetLink
     });
   } catch (error) {

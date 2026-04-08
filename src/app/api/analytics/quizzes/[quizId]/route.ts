@@ -134,6 +134,67 @@ export async function GET(
         .filter((question) => question.attemptsCount > 0)
         .sort((left, right) => left.accuracyPercent - right.accuracyPercent)[0] ?? null;
 
+    const scoreBands = [
+      {
+        label: "0-25%",
+        count: quiz.attempts.filter(
+          (attempt) =>
+            quiz._count.questions > 0 &&
+            (attempt.totalScore / quiz._count.questions) * 100 <= 25
+        ).length
+      },
+      {
+        label: "26-50%",
+        count: quiz.attempts.filter((attempt) => {
+          if (quiz._count.questions === 0) {
+            return false;
+          }
+
+          const percent = (attempt.totalScore / quiz._count.questions) * 100;
+          return percent > 25 && percent <= 50;
+        }).length
+      },
+      {
+        label: "51-75%",
+        count: quiz.attempts.filter((attempt) => {
+          if (quiz._count.questions === 0) {
+            return false;
+          }
+
+          const percent = (attempt.totalScore / quiz._count.questions) * 100;
+          return percent > 50 && percent <= 75;
+        }).length
+      },
+      {
+        label: "76-100%",
+        count: quiz.attempts.filter((attempt) => {
+          if (quiz._count.questions === 0) {
+            return false;
+          }
+
+          const percent = (attempt.totalScore / quiz._count.questions) * 100;
+          return percent > 75;
+        }).length
+      }
+    ];
+
+    const warningBands = [
+      {
+        label: "Clean",
+        count: quiz.attempts.filter((attempt) => attempt.warningLevel === 0).length
+      },
+      {
+        label: "Warned",
+        count: quiz.attempts.filter(
+          (attempt) => attempt.warningLevel > 0 && attempt.warningLevel < 3
+        ).length
+      },
+      {
+        label: "Flagged",
+        count: quiz.attempts.filter((attempt) => attempt.warningLevel >= 3).length
+      }
+    ];
+
     return jsonOk({
       quiz: serializeBigInt({
         id: quiz.id,
@@ -155,11 +216,12 @@ export async function GET(
           : null,
         hardestQuestion
       }),
-      questions: serializeBigInt(questionAnalytics)
+      questions: serializeBigInt(questionAnalytics),
+      scoreBands,
+      warningBands
     });
   } catch (error) {
     console.error("quiz analytics error", error);
     return jsonError("Unable to load quiz analytics.", 500);
   }
 }
-

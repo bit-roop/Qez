@@ -101,6 +101,20 @@ export async function GET(
       return jsonError("No attempt found for this quiz.", 404);
     }
 
+    const certificateClaim = await prisma.certificateClaim.findUnique({
+      where: {
+        userId_quizId: {
+          userId: user.id,
+          quizId
+        }
+      },
+      select: {
+        id: true,
+        title: true,
+        claimedAt: true
+      }
+    });
+
     const responseMap = new Map(
       attempt.responses.map((response) => [response.questionId.toString(), response])
     );
@@ -112,6 +126,7 @@ export async function GET(
         mode: quiz.mode
       }),
       attempt: serializeBigInt(attempt),
+      certificateClaim: serializeBigInt(certificateClaim),
       questions: serializeBigInt(
         quiz.questions.map((question) => ({
           id: question.id,

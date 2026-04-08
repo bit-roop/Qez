@@ -4,7 +4,6 @@ import { AuthSession, ClientUser } from "@/types/client-auth";
 
 const AUTH_STORAGE_KEY = "qez.auth.session";
 const AUTH_SESSION_EVENT = "qez-auth-session-changed";
-const PROFILE_PREFS_KEY = "qez.profile.preferences";
 
 function emitSessionChange() {
   if (typeof window === "undefined") {
@@ -26,16 +25,7 @@ export function loadSession(): AuthSession | null {
   }
 
   try {
-    const session = JSON.parse(raw) as AuthSession;
-    const profilePrefs = loadProfilePreferences();
-
-    return {
-      ...session,
-      user: {
-        ...session.user,
-        ...profilePrefs
-      }
-    };
+    return JSON.parse(raw) as AuthSession;
   } catch {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;
@@ -43,24 +33,25 @@ export function loadSession(): AuthSession | null {
 }
 
 export function loadProfilePreferences() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  try {
-    const raw = window.localStorage.getItem(PROFILE_PREFS_KEY);
-    return raw
-      ? (JSON.parse(raw) as Pick<ClientUser, "avatarKey" | "bio" | "institution">)
-      : {};
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 export function saveProfilePreferences(
   preferences: Pick<ClientUser, "avatarKey" | "bio" | "institution">
 ) {
-  window.localStorage.setItem(PROFILE_PREFS_KEY, JSON.stringify(preferences));
+  const current = loadSession();
+
+  if (current) {
+    saveSession({
+      ...current,
+      user: {
+        ...current.user,
+        ...preferences
+      }
+    });
+    return;
+  }
+
   emitSessionChange();
 }
 
@@ -115,11 +106,15 @@ export function subscribeToSessionChanges(callback: () => void) {
 }
 
 export function getDefaultDashboardPath(role: ClientUser["role"]) {
+  if (role === "ADMIN") {
+    return "/dashboard/admin";
+  }
+
   if (role === "WEBINAR_HOST") {
     return "/dashboard/host";
   }
 
-  if (role === "TEACHER" || role === "ADMIN") {
+  if (role === "TEACHER") {
     return "/dashboard/teacher";
   }
 
@@ -151,4 +146,37 @@ export async function apiFetch<T>(
   }
 
   return data;
+}
+
+export async function downloadAuthenticatedFile(
+  input: RequestInfo | URL,
+  filename: string,
+  init?: RequestInit
+) {
+  const session = loadSession();
+  const headers = new Headers(init?.headers);
+
+  if (session?.token) {
+    headers.set("Authorization", `Bearer ${session.token}`);
+  }
+
+  const response = await fetch(input, {
+    ...init,
+    headers
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Unable to download file.");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }

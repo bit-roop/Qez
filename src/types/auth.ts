@@ -5,6 +5,7 @@ export type AuthTokenPayload = {
   email: string;
   role: UserRole;
   name: string;
+  emailVerified: boolean;
 };
 
 export type AuthUser = {
@@ -12,4 +13,9 @@ export type AuthUser = {
   email: string;
   role: UserRole;
   name: string;
+  institution?: string | null;
+  bio?: string | null;
+  avatarKey?: string | null;
+  profileSerial?: string | null;
+  emailVerified: boolean;
 };

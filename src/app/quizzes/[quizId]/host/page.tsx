@@ -16,7 +16,7 @@ export default function WebinarHostControlPage({ params }: WebinarHostControlPag
   return (
     <main className="page-shell">
       <SessionGate
-        allowedRoles={["WEBINAR_HOST", "TEACHER", "ADMIN"]}
+        allowedRoles={["WEBINAR_HOST", "ADMIN"]}
         description="Login to control this webinar quiz."
         title="Webinar Host Control"
       >

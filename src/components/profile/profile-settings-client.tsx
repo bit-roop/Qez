@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { apiFetch, loadProfilePreferences, saveProfilePreferences, saveSession } from "@/lib/client-auth";
+import { apiFetch, saveSession } from "@/lib/client-auth";
 import { avatarPresets, getAvatarPreset, getInitials } from "@/lib/profile";
 import { AuthSession } from "@/types/client-auth";
 
@@ -14,11 +14,10 @@ type ProfileSettingsClientProps = {
 };
 
 export function ProfileSettingsClient({ session }: ProfileSettingsClientProps) {
-  const storedPreferences = loadProfilePreferences();
   const [name, setName] = useState(session.user.name);
-  const [institution, setInstitution] = useState(storedPreferences.institution ?? session.user.institution ?? "");
-  const [bio, setBio] = useState(storedPreferences.bio ?? session.user.bio ?? "");
-  const [avatarKey, setAvatarKey] = useState(storedPreferences.avatarKey ?? session.user.avatarKey ?? avatarPresets[0].key);
+  const [institution, setInstitution] = useState(session.user.institution ?? "");
+  const [bio, setBio] = useState(session.user.bio ?? "");
+  const [avatarKey, setAvatarKey] = useState(session.user.avatarKey ?? avatarPresets[0].key);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,24 +34,17 @@ export function ProfileSettingsClient({ session }: ProfileSettingsClientProps) {
       const data = await apiFetch<ProfileResponse>("/api/profile/me", {
         method: "PATCH",
         body: JSON.stringify({
-          name
+          name,
+          institution,
+          bio,
+          avatarKey
         })
-      });
-
-      saveProfilePreferences({
-        institution: institution.trim() || null,
-        bio: bio.trim() || null,
-        avatarKey
       });
 
       saveSession({
         ...session,
         user: {
-          ...session.user,
-          ...data.profile,
-          institution: institution.trim() || null,
-          bio: bio.trim() || null,
-          avatarKey
+          ...data.profile
         }
       });
       setMessage("Profile updated successfully.");

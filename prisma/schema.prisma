@@ -59,18 +59,26 @@ enum SuspiciousEventType {
 }
 
 model User {
-  id                BigInt          @id @default(autoincrement())
-  name              String
-  email             String          @unique
-  passwordHash      String
-  googleId          String?         @unique
-  role              UserRole
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  createdQuizzes    Quiz[]          @relation("QuizOwner")
-  attempts          Attempt[]
-  webinarPoints     WebinarResult[]
-  passwordResetTokens PasswordResetToken[]
+  id                     BigInt                  @id @default(autoincrement())
+  name                   String
+  email                  String                  @unique
+  passwordHash           String
+  googleId               String?                 @unique
+  role                   UserRole
+  institution            String?
+  bio                    String?
+  avatarKey              String?
+  profileSerial          String?                 @unique
+  emailVerified          Boolean                 @default(false)
+  emailVerifiedAt        DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  createdQuizzes         Quiz[]                  @relation("QuizOwner")
+  attempts               Attempt[]
+  webinarPoints          WebinarResult[]
+  passwordResetTokens    PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  certificateClaims      CertificateClaim[]
 }
 
 model Quiz {
@@ -98,6 +106,7 @@ model Quiz {
   questions             Question[]
   attempts              Attempt[]
   webinarResults        WebinarResult[]
+  certificateClaims     CertificateClaim[]
 
   @@index([ownerId])
   @@index([state, startsAt, endsAt])
@@ -146,12 +155,16 @@ model Attempt {
   warningLevel      Int              @default(0)
   tabSwitchCount    Int              @default(0)
   suspicious        Boolean          @default(false)
+  draftAnswers      Json?
+  draftTimeSpent    Json?
+  lastRecoveredAt   DateTime?
   startedAt         DateTime         @default(now())
   submittedAt       DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   responses         Response[]
   suspiciousEvents  SuspiciousEvent[]
+  certificateClaims CertificateClaim[]
 
   @@unique([userId, quizId])
   @@index([quizId])
@@ -208,4 +221,30 @@ model PasswordResetToken {
   createdAt  DateTime @default(now())
 
   @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model CertificateClaim {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt
+  quizId      BigInt
+  attemptId   BigInt?
+  title       String
+  claimedAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz        Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  attempt     Attempt?  @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, quizId])
+  @@index([userId, claimedAt])
 }

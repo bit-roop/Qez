@@ -16,6 +16,10 @@ function OAuthCompleteContent() {
     const email = searchParams.get("email");
     const name = searchParams.get("name");
     const role = searchParams.get("role") as AuthSession["user"]["role"] | null;
+    const institution = searchParams.get("institution");
+    const bio = searchParams.get("bio");
+    const avatarKey = searchParams.get("avatarKey");
+    const profileSerial = searchParams.get("profileSerial");
 
     if (!token || !id || !email || !name || !role) {
       setError("Google sign-in could not be completed.");
@@ -28,7 +32,12 @@ function OAuthCompleteContent() {
         id,
         email,
         name,
-        role
+        role,
+        institution,
+        bio,
+        avatarKey,
+        profileSerial,
+        emailVerified: true
       }
     });
 

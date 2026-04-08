@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { signAuthToken } from "@/lib/auth";
-import { getGoogleOAuthConfig } from "@/lib/auth";
+import { getGoogleOAuthConfigForRequest, signAuthToken } from "@/lib/auth";
+import { getProfileSerial } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
 
 type GoogleTokenResponse = {
@@ -16,7 +16,7 @@ type GoogleUserInfo = {
 };
 
 export async function GET(request: NextRequest) {
-  const config = getGoogleOAuthConfig();
+  const config = getGoogleOAuthConfigForRequest(request);
 
   if (!config) {
     return NextResponse.redirect(new URL("/login?error=google-not-configured", request.url));
@@ -80,7 +80,10 @@ export async function GET(request: NextRequest) {
         where: { id: user.id },
         data: {
           googleId: googleUser.sub,
-          name: user.name || googleUser.name
+          name: user.name || googleUser.name,
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+          profileSerial: user.profileSerial || getProfileSerial(user.email)
         }
       });
     } else {
@@ -90,7 +93,10 @@ export async function GET(request: NextRequest) {
           email: googleUser.email.toLowerCase(),
           googleId: googleUser.sub,
           passwordHash: "",
-          role: "STUDENT"
+          role: "STUDENT",
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+          profileSerial: getProfileSerial(googleUser.email.toLowerCase())
         }
       });
     }
@@ -99,7 +105,8 @@ export async function GET(request: NextRequest) {
       userId: user.id.toString(),
       email: user.email,
       role: user.role,
-      name: user.name
+      name: user.name,
+      emailVerified: true
     });
 
     const completeUrl = new URL("/oauth-complete", request.url);
@@ -108,6 +115,18 @@ export async function GET(request: NextRequest) {
     completeUrl.searchParams.set("email", user.email);
     completeUrl.searchParams.set("name", user.name);
     completeUrl.searchParams.set("role", user.role);
+    if (user.institution) {
+      completeUrl.searchParams.set("institution", user.institution);
+    }
+    if (user.bio) {
+      completeUrl.searchParams.set("bio", user.bio);
+    }
+    if (user.avatarKey) {
+      completeUrl.searchParams.set("avatarKey", user.avatarKey);
+    }
+    if (user.profileSerial) {
+      completeUrl.searchParams.set("profileSerial", user.profileSerial);
+    }
 
     return NextResponse.redirect(completeUrl);
   } catch (error) {
