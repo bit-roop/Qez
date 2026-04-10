@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { clearSession, apiFetch, getStoredToken } from "@/lib/client-auth";
+import { MotionPage } from "@/components/motion/motion-shell";
 import { AuthSession } from "@/types/client-auth";
 
 type TeacherQuiz = {
@@ -455,7 +456,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
   }
 
   return (
-    <div className="dashboard-shell">
+    <MotionPage className="dashboard-shell">
       <section className="dashboard-hero">
         <div className="dashboard-hero-copy">
           <span className="eyebrow">Teacher Workspace</span>
@@ -948,6 +949,6 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
         </article>
         )}
       </section>
-    </div>
+    </MotionPage>
   );
 }

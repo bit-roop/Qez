@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch, clearSession } from "@/lib/client-auth";
+import { MotionPage } from "@/components/motion/motion-shell";
 import { AuthSession } from "@/types/client-auth";
 
 type WebinarQuiz = {
@@ -124,7 +125,7 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
   }
 
   return (
-    <div className="dashboard-shell">
+    <MotionPage className="dashboard-shell">
       <section className="dashboard-hero dashboard-hero--webinar">
         <div className="dashboard-hero-copy">
           <span className="eyebrow">Live Control</span>
@@ -283,6 +284,6 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
           </div>
         </article>
       </section>
-    </div>
+    </MotionPage>
   );
 }

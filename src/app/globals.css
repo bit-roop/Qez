@@ -21,6 +21,7 @@
 
 html {
   font-family: "Segoe UI", "Trebuchet MS", Verdana, sans-serif;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -32,6 +33,7 @@ body {
     radial-gradient(circle at 85% 14%, rgba(65, 214, 195, 0.22), transparent 24%),
     radial-gradient(circle at 62% 62%, rgba(107, 124, 255, 0.14), transparent 28%),
     linear-gradient(135deg, #09111f 0%, #101a31 36%, #151130 68%, #0a1628 100%);
+  scroll-behavior: smooth;
 }
 
 .app-body {
@@ -829,7 +831,7 @@ ul {
   display: grid;
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.5fr);
   gap: 1rem;
-  align-items: start;
+  align-items: flex-start;
 }
 
 .quiz-detail-summary {
@@ -1503,7 +1505,7 @@ ul {
 
 .monitor-top {
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: flex-start;
 }
 
 .monitor-stats {
@@ -2896,7 +2898,7 @@ h1, h2, h3, h4, .brand-lockup strong {
   justify-content: space-between;
   gap: 1rem;
   color: var(--text-secondary);
-  align-items: start;
+  align-items: flex-start;
 }
 
 .site-footer__inner strong {
@@ -2916,7 +2918,7 @@ h1, h2, h3, h4, .brand-lockup strong {
 .site-footer__column {
   display: grid;
   gap: 0.2rem;
-  align-content: start;
+  align-content: flex-start;
 }
 
 .site-footer__meta {
@@ -4082,6 +4084,24 @@ body::before {
   background: var(--z-surface) !important;
   border: 1.5px solid var(--z-border-2) !important;
   color: var(--z-ink-2) !important;
+}
+
+.motion-lift,
+.card,
+.dashboard-card,
+.metric-card,
+.preview-card,
+.home-card,
+.leaderboard-panel,
+.result-panel,
+.analytics-panel,
+.monitor-panel,
+.quiz-list-item {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease !important;
 }
 
 .hero-strip div { background: var(--z-white) !important; border: 2px solid var(--z-border-2) !important; box-shadow: 3px 3px 0 rgba(91,61,245,0.1) !important; }

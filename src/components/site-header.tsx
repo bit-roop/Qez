@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -9,6 +10,7 @@ import { AuthSession } from "@/types/client-auth";
 
 export function SiteHeader() {
   const [session, setSession] = useState<AuthSession | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     setSession(loadSession());
@@ -54,7 +56,7 @@ export function SiteHeader() {
     ];
   }, [session]);
 
-  return (
+  const headerContent = (
     <header className="site-header">
       <div className="site-header__inner">
         <Link className="brand-lockup" href="/">
@@ -86,5 +88,19 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+  );
+
+  if (prefersReducedMotion) {
+    return headerContent;
+  }
+
+  return (
+    <motion.div
+      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: -18 }}
+      transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {headerContent}
+    </motion.div>
   );
 }

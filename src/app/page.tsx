@@ -9,6 +9,12 @@ import {
   loadSession,
   subscribeToSessionChanges
 } from "@/lib/client-auth";
+import {
+  MotionItem,
+  MotionPage,
+  MotionSection,
+  MotionStagger
+} from "@/components/motion/motion-shell";
 import { AuthSession } from "@/types/client-auth";
 
 type JoinQuizResponse = {
@@ -61,8 +67,8 @@ export default function HomePage() {
 
   if (!session) {
     return (
-      <main className="page-shell home-shell">
-        <section className="home-hero home-hero--guest">
+      <MotionPage className="page-shell home-shell">
+        <MotionSection className="home-hero home-hero--guest">
           <div className="home-guest-layout">
             <div className="home-copy">
               <span className="eyebrow">Qez</span>
@@ -93,44 +99,44 @@ export default function HomePage() {
             </aside>
           </div>
 
-          <div className="home-grid" id="features">
-            <article className="home-card home-card--accent" id="academic-mode">
+          <MotionStagger className="home-grid" id="features">
+            <MotionItem className="home-card home-card--accent" id="academic-mode">
               <span className="question-badge">Academic Mode</span>
               <h2>Structured assessments</h2>
               <p>Conduct timed quizzes with full control over attempts, scoring, and result visibility.</p>
-            </article>
-            <article className="home-card" id="webinar-mode">
+            </MotionItem>
+            <MotionItem className="home-card" id="webinar-mode">
               <span className="question-badge">Webinar Mode</span>
               <h2>Live competitive rounds</h2>
               <p>Run real-time quiz events with instant rankings, speed-based scoring, and winner tracking.</p>
-            </article>
-            <article className="home-card" id="leaderboard">
+            </MotionItem>
+            <MotionItem className="home-card" id="leaderboard">
               <span className="question-badge">Backend Strength</span>
               <h2>Reliable by design</h2>
               <p>Transaction-safe submissions, role-based access, and scalable PostgreSQL architecture.</p>
-            </article>
-          </div>
+            </MotionItem>
+          </MotionStagger>
 
-          <section className="home-why card">
+          <MotionSection className="home-why card">
             <span className="eyebrow">Why Qez</span>
             <h2>Built for real use — not just demos</h2>
-            <div className="home-why-grid">
-              <article className="preview-card preview-card--feature">
+            <MotionStagger className="home-why-grid">
+              <MotionItem className="preview-card preview-card--feature">
                 <p className="section-copy">Server-side scoring with no client manipulation.</p>
-              </article>
-              <article className="preview-card preview-card--feature">
+              </MotionItem>
+              <MotionItem className="preview-card preview-card--feature">
                 <p className="section-copy">Anti-cheat tracking with tab-switch detection.</p>
-              </article>
-              <article className="preview-card preview-card--feature">
+              </MotionItem>
+              <MotionItem className="preview-card preview-card--feature">
                 <p className="section-copy">Scalable architecture using PostgreSQL, Prisma, and Neon.</p>
-              </article>
-              <article className="preview-card preview-card--feature">
+              </MotionItem>
+              <MotionItem className="preview-card preview-card--feature">
                 <p className="section-copy">Works across desktop and mobile.</p>
-              </article>
-            </div>
-          </section>
-        </section>
-      </main>
+              </MotionItem>
+            </MotionStagger>
+          </MotionSection>
+        </MotionSection>
+      </MotionPage>
     );
   }
 
@@ -140,18 +146,18 @@ export default function HomePage() {
   const isAdmin = session.user.role === "ADMIN";
 
   return (
-    <main className="page-shell home-shell">
-      <section className="home-hero">
+    <MotionPage className="page-shell home-shell">
+      <MotionSection className="home-hero">
         <div className="home-copy">
           <span className="eyebrow">Welcome back</span>
           <h1>{session.user.name}, what do you want to do next?</h1>
           <p className="section-copy">Quick access only. No extra clutter.</p>
         </div>
 
-        <div className="home-grid">
+        <MotionStagger className="home-grid">
           {isStudent ? (
             <>
-              <article className="home-card home-card--accent">
+              <MotionItem className="home-card home-card--accent">
                 <span className="question-badge">Quick Join</span>
                 <h2>Enter quiz code</h2>
                 <form className="home-join-form" onSubmit={handleQuickJoin}>
@@ -168,80 +174,80 @@ export default function HomePage() {
                   </button>
                 </form>
                 {joinError ? <p className="status-banner status-banner--error">{joinError}</p> : null}
-              </article>
+              </MotionItem>
 
-              <article className="home-card">
+              <MotionItem className="home-card">
                 <span className="question-badge">Student</span>
                 <h2>Open dashboard</h2>
                 <p>See joined quizzes, leaderboards, and your quiz tools.</p>
                 <Link className="secondary-button" href={dashboardPath}>
                   Go to student dashboard
                 </Link>
-              </article>
+              </MotionItem>
             </>
           ) : isHost ? (
             <>
-              <article className="home-card home-card--accent">
+              <MotionItem className="home-card home-card--accent">
                 <span className="question-badge">Live Control</span>
                 <h2>Run the stage in real time</h2>
                 <p>Open your live event dashboard, start rounds, and reveal winners with the public board ready.</p>
                 <Link className="primary-button" href={dashboardPath}>
                   Open live control
                 </Link>
-              </article>
+              </MotionItem>
 
-              <article className="home-card">
+              <MotionItem className="home-card">
                 <span className="question-badge">Studio</span>
                 <h2>Create the next webinar quiz</h2>
                 <p>Jump into quiz setup, prepare new rounds, and keep your live queue ready.</p>
                 <Link className="secondary-button" href="/dashboard/host/create">
                   Open webinar studio
                 </Link>
-              </article>
+              </MotionItem>
             </>
           ) : isAdmin ? (
             <>
-              <article className="home-card home-card--accent">
+              <MotionItem className="home-card home-card--accent">
                 <span className="question-badge">Admin</span>
                 <h2>Open the control center</h2>
                 <p>Monitor users, quiz activity, and suspicious attempts from the platform overview.</p>
                 <Link className="primary-button" href={dashboardPath}>
                   Open admin dashboard
                 </Link>
-              </article>
+              </MotionItem>
 
-              <article className="home-card">
+              <MotionItem className="home-card">
                 <span className="question-badge">Oversight</span>
                 <h2>Review the creation workspace</h2>
                 <p>Jump into the quiz studio if you need to inspect creator-facing flows directly.</p>
                 <Link className="secondary-button" href="/dashboard/teacher">
                   Open quiz studio
                 </Link>
-              </article>
+              </MotionItem>
             </>
           ) : (
             <>
-              <article className="home-card home-card--accent">
+              <MotionItem className="home-card home-card--accent">
                 <span className="question-badge">Teacher</span>
                 <h2>Create or manage quizzes</h2>
                 <p>Open your quiz library, edit drafts, and activate live quizzes.</p>
                 <Link className="primary-button" href={dashboardPath}>
                   Open teacher dashboard
                 </Link>
-              </article>
+              </MotionItem>
 
-              <article className="home-card">
+              <MotionItem className="home-card">
                 <span className="question-badge">Workspace</span>
                 <h2>Run the next session fast</h2>
                 <p>One place for quiz setup, analytics, leaderboard, and flagged attempts.</p>
                 <Link className="secondary-button" href={dashboardPath}>
                   Go to workspace
                 </Link>
-              </article>
+              </MotionItem>
             </>
           )}
-        </div>
-      </section>
-    </main>
+        </MotionStagger>
+      </MotionSection>
+    </MotionPage>
   );
 }

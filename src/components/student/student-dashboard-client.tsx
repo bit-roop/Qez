@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch, clearSession, downloadAuthenticatedFile } from "@/lib/client-auth";
+import { MotionPage } from "@/components/motion/motion-shell";
 import { getProfileHoverLabel, getProfileSerial } from "@/lib/profile";
 import { AuthSession } from "@/types/client-auth";
 
@@ -181,7 +182,7 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
   }
 
   return (
-    <div className="dashboard-page">
+    <MotionPage className="dashboard-page">
       <section className="dashboard-hero">
         <div>
           <span className="eyebrow">Student Workspace</span>
@@ -431,6 +432,6 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
           </article>
         )}
       </section>
-    </div>
+    </MotionPage>
   );
 }

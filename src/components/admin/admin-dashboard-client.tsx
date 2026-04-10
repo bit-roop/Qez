@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/client-auth";
+import { MotionPage } from "@/components/motion/motion-shell";
 import { AuthSession } from "@/types/client-auth";
 
 type AdminUser = {
@@ -221,7 +222,7 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
   );
 
   return (
-    <div className="dashboard-shell">
+    <MotionPage className="dashboard-shell">
       <section className="dashboard-hero dashboard-hero--admin">
         <div className="dashboard-hero-copy">
           <span className="eyebrow">Admin Command</span>
@@ -484,6 +485,6 @@ export function AdminDashboardClient({ session }: AdminDashboardClientProps) {
           </article>
         </section>
       ) : null}
-    </div>
+    </MotionPage>
   );
 }
