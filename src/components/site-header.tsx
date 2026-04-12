@@ -70,9 +70,8 @@ export function SiteHeader() {
           <span className="brand-lockup__mark brand-lockup__mark--image">
             <BrandMark className="brand-lockup__logo-image" />
           </span>
-          <span>
-            <strong>Qez</strong>
-            <small>Quizzes &amp; Tests</small>
+          <span className="brand-lockup__copy">
+            <small>Quiz-On-The-Go</small>
           </span>
         </Link>
 
@@ -93,7 +92,7 @@ export function SiteHeader() {
                 Log in
               </Link>
               <Link href="/register" className="primary-link header-btn-sm">
-                Get started free
+                Get started →
               </Link>
             </div>
           ) : (

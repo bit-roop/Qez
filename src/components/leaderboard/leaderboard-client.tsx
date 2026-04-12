@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { SkeletonBlock } from "@/components/feedback/skeleton-block";
 import { apiFetch } from "@/lib/client-auth";
 import { getStoredToken } from "@/lib/client-auth";
 import { getProfileHoverLabel, getProfileSerial } from "@/lib/profile";
@@ -61,7 +62,25 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
+  const [podiumRevealCount, setPodiumRevealCount] = useState(0);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    if (!data || data.quiz.mode !== "WEBINAR" || data.topPerformers.length === 0) {
+      return;
+    }
+
+    setPodiumRevealCount(0);
+    const timeouts = [0, 1, 2].map((index) =>
+      window.setTimeout(() => {
+        setPodiumRevealCount((current) => Math.max(current, index + 1));
+      }, index * 700)
+    );
+
+    return () => {
+      timeouts.forEach((timeout) => window.clearTimeout(timeout));
+    };
+  }, [data]);
 
   useEffect(() => {
     let active = true;
@@ -130,6 +149,11 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
         <article className="leaderboard-panel">
           <span className="eyebrow">Leaderboard</span>
           <h1>Loading live standings...</h1>
+          <div className="dashboard-skeleton-grid" aria-hidden="true">
+            <SkeletonBlock className="skeleton--title" />
+            <SkeletonBlock className="skeleton--card" />
+            <SkeletonBlock className="skeleton--card" />
+          </div>
         </article>
       </section>
     );
@@ -192,9 +216,11 @@ export function LeaderboardClient({ quizId }: LeaderboardClientProps) {
           </div>
 
           <div className="webinar-podium webinar-podium--revealed">
-            {data.topPerformers.map((entry, index) => (
+            {[...data.topPerformers]
+              .sort((left, right) => right.rank - left.rank)
+              .map((entry, index) => (
               <article
-                className={`webinar-podium-card webinar-podium-card--${index + 1}`}
+                className={`webinar-podium-card webinar-podium-card--${entry.rank} ${podiumRevealCount > index ? "webinar-podium-card--visible" : ""}`}
                 key={entry.id}
               >
                 <span className="webinar-podium-rank">#{entry.rank}</span>

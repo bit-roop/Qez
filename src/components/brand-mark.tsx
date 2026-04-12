@@ -12,33 +12,32 @@ export function BrandMark({ className }: BrandMarkProps) {
     <svg
       aria-hidden="true"
       className={className}
-      viewBox="0 0 48 48"
+      viewBox="0 0 126 52"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Background rounded square */}
-      <rect width="48" height="48" rx="13" fill="url(#qez_bg)" />
-
-      {/* Q ring */}
-      <circle cx="22" cy="21" r="10" stroke="white" strokeWidth="4" fill="none" />
-
-      {/* Q tail → lightning bolt extends from bottom-right of the Q */}
+      <rect x="1.5" y="1.5" width="123" height="49" rx="24.5" fill="#121318" stroke="#1e2130" strokeWidth="3" />
+      <ellipse cx="27" cy="26" rx="14" ry="13.5" stroke="#ffffff" strokeWidth="4.4" />
       <path
-        d="M29 28 L36 40 L29 37 L31 44 L22 32"
-        stroke="white"
-        strokeWidth="3.2"
+        d="M34.5 34.5L43 43.2L35.5 41L36.8 48L25.3 34.2"
+        stroke="#ffffff"
+        strokeWidth="3.6"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
-
-      {/* Small inner dot — like a question mark / quiz bubble */}
-      <circle cx="22" cy="21" r="3.5" fill="white" opacity="0.9" />
-
+      <path
+        d="M54.8 34V17.7H68.1V21.7H59.8V24.1H67.3V28H59.8V30H68.4V34H54.8Z"
+        fill="url(#qez_word)"
+      />
+      <path
+        d="M70.8 34V30.6L78 22H71.2V17.7H84.3V21L77.3 29.7H84.4V34H70.8Z"
+        fill="url(#qez_word)"
+      />
       <defs>
-        <linearGradient id="qez_bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#6B5EFF" />
-          <stop offset="100%" stopColor="#4E46C8" />
+        <linearGradient id="qez_word" x1="54" y1="15" x2="86" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#b79dff" />
+          <stop offset="100%" stopColor="#7656ff" />
         </linearGradient>
       </defs>
     </svg>

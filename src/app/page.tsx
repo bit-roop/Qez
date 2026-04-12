@@ -133,10 +133,10 @@ function GuestHome() {
           </p>
           <div className="lp-hero__ctas hero-actions">
             <Link href="/register" className="primary-link lp-cta-primary">
-              Get started free →
+              Start for free →
             </Link>
             <Link href="#how-it-works" className="secondary-link">
-              See how it works
+              How it works
             </Link>
           </div>
           <div className="lp-trust">
@@ -146,7 +146,7 @@ function GuestHome() {
               <span style={{ background: "#d85f3d" }}>P</span>
               <span style={{ background: "#efb941" }}>R</span>
             </div>
-            <p className="lp-trust__text">Trusted by <strong>2,400+ educators</strong> to run fair, scored assessments</p>
+            <p className="lp-trust__text">Used by <strong>2,400+ educators</strong> — free to start, no card needed</p>
           </div>
         </div>
 
@@ -272,14 +272,14 @@ function GuestHome() {
         <div className="lp-cta-banner__inner">
           <div>
             <h2>Ready to run your first quiz?</h2>
-            <p className="section-copy">Free to start. No credit card. Works in minutes.</p>
+            <p className="section-copy">Free forever for small classes. No credit card. Live in minutes.</p>
           </div>
           <div className="hero-actions">
             <Link href="/register" className="primary-link lp-cta-primary">
-              Create a free account →
+              Create free account →
             </Link>
             <Link href="/login" className="secondary-link">
-              Already have an account
+              Sign in
             </Link>
           </div>
         </div>

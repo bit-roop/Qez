@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { SkeletonBlock } from "@/components/feedback/skeleton-block";
+import { useToast } from "@/components/feedback/toast-provider";
 import { apiFetch, clearSession, downloadAuthenticatedFile } from "@/lib/client-auth";
 import { MotionPage } from "@/components/motion/motion-shell";
 import { getProfileHoverLabel, getProfileSerial } from "@/lib/profile";
@@ -67,6 +69,7 @@ type HistoryItem = {
 };
 
 export function StudentDashboardClient({ session }: StudentDashboardClientProps) {
+  const { showToast } = useToast();
   const [activePanel, setActivePanel] = useState<"join" | "history" | "achievements">(() => {
     if (typeof window === "undefined") {
       return "join";
@@ -174,6 +177,7 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
       });
 
       setMatchedQuiz(data.quiz);
+      showToast(`Quiz ${data.quiz.title} found.`, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to find quiz.");
     } finally {
@@ -340,10 +344,18 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
             </div>
 
             {isLoadingHistory ? (
-              <p className="section-copy">Loading your past quiz attempts...</p>
+              <div className="dashboard-skeleton-grid" aria-hidden="true">
+                <SkeletonBlock className="skeleton--card" />
+                <SkeletonBlock className="skeleton--card" />
+              </div>
             ) : history.length === 0 ? (
               <div className="empty-state">
-                Your submitted quizzes will appear here once you complete them.
+                <div className="empty-state__art" aria-hidden="true">📚</div>
+                <h3>No quiz history yet</h3>
+                <p className="section-copy">Your submitted quizzes will show up here once you complete your first attempt.</p>
+                <button className="primary-button" onClick={() => setActivePanel("join")} type="button">
+                  Join a quiz now
+                </button>
               </div>
             ) : (
               <div className="experience-grid">
@@ -387,10 +399,18 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
             </div>
 
             {isLoadingAchievements ? (
-              <p className="section-copy">Loading your claimed certificates...</p>
+              <div className="dashboard-skeleton-grid" aria-hidden="true">
+                <SkeletonBlock className="skeleton--card" />
+                <SkeletonBlock className="skeleton--card" />
+              </div>
             ) : achievements.length === 0 ? (
               <div className="empty-state">
-                Claim a certificate from any completed result page and it will show up here.
+                <div className="empty-state__art" aria-hidden="true">🏅</div>
+                <h3>No certificates yet</h3>
+                <p className="section-copy">Claim a certificate from a completed result page and it will appear here for quick download.</p>
+                <button className="primary-button" onClick={() => setActivePanel("history")} type="button">
+                  Check recent results
+                </button>
               </div>
             ) : (
               <div className="experience-grid">
@@ -415,7 +435,9 @@ export function StudentDashboardClient({ session }: StudentDashboardClientProps)
                           void downloadAuthenticatedFile(
                             `/api/quizzes/${achievement.quiz.id}/certificate/pdf`,
                             `${achievement.quiz.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-certificate.pdf`
-                          ).finally(() => setDownloadingQuizId((current) => (current === achievement.quiz.id ? null : current)));
+                          )
+                            .then(() => showToast("Certificate downloaded.", "success"))
+                            .finally(() => setDownloadingQuizId((current) => (current === achievement.quiz.id ? null : current)));
                         }}
                         type="button"
                       >

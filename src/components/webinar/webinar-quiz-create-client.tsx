@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useState } from "react";
+import { useToast } from "@/components/feedback/toast-provider";
 import { apiFetch } from "@/lib/client-auth";
 import { AuthSession } from "@/types/client-auth";
 
@@ -64,9 +65,11 @@ async function copyQuizInvite(title: string, joinCode: string) {
 }
 
 export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProps) {
+  const { showToast } = useToast();
   const [questions, setQuestions] = useState([emptyQuestion(1)]);
   const [collapsedQuestions, setCollapsedQuestions] = useState<number[]>([]);
   const [draggedQuestionIndex, setDraggedQuestionIndex] = useState<number | null>(null);
+  const [currentEditorIndex, setCurrentEditorIndex] = useState(0);
   const [allowedEmailsInput, setAllowedEmailsInput] = useState("");
   const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
   const [uploadedRosterEmails, setUploadedRosterEmails] = useState<string[]>([]);
@@ -107,6 +110,7 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
 
   function addQuestion() {
     setQuestions((current) => [...current, emptyQuestion(current.length + 1)]);
+    setCurrentEditorIndex(questions.length);
   }
 
   function removeQuestion(index: number) {
@@ -121,6 +125,26 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
     setCollapsedQuestions((current) =>
       current.filter((item) => item !== index).map((item) => (item > index ? item - 1 : item))
     );
+    setCurrentEditorIndex((current) => Math.max(0, current > index ? current - 1 : current));
+  }
+
+  function duplicateQuestion(index: number) {
+    setQuestions((current) => {
+      const source = current[index];
+      const clone = {
+        ...source,
+        displayOrder: index + 2,
+        options: source.options.map((option) => ({ ...option }))
+      };
+      const next = [...current];
+      next.splice(index + 1, 0, clone);
+      return next.map((question, questionIndex) => ({
+        ...question,
+        displayOrder: questionIndex + 1
+      }));
+    });
+    setCurrentEditorIndex(index + 1);
+    showToast(`Question ${index + 1} duplicated.`, "success");
   }
 
   function moveQuestion(index: number, targetIndex: number) {
@@ -147,6 +171,7 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
     }
 
     moveQuestion(draggedQuestionIndex, targetIndex);
+    setCurrentEditorIndex(targetIndex);
     setDraggedQuestionIndex(null);
   }
 
@@ -163,6 +188,7 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
       setUploadedRosterFileName(file.name);
       setMessage(`Imported ${emails.length} participant emails from ${file.name}.`);
       setError(null);
+      showToast(`Imported ${emails.length} webinar participants.`, "success");
     } catch {
       setError("Unable to read that roster file.");
     }
@@ -201,6 +227,8 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
         joinCode: data.quiz.joinCode
       });
       setMessage(`Webinar quiz created. Join code: ${data.quiz.joinCode}`);
+      setCurrentEditorIndex(0);
+      showToast(`Webinar quiz created. Join code ${data.quiz.joinCode}.`, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to create webinar quiz.");
     } finally {
@@ -282,23 +310,69 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
               </p>
               <button
                 className="secondary-button"
-                onClick={() => {
-                  void copyQuizInvite(latestInvite.title, latestInvite.joinCode);
-                  setMessage("Webinar invite copied.");
-                }}
-                type="button"
-              >
+                  onClick={() => {
+                    void copyQuizInvite(latestInvite.title, latestInvite.joinCode);
+                    setMessage("Webinar invite copied.");
+                    showToast("Webinar invite copied.", "success");
+                  }}
+                  type="button"
+                >
                 Copy link and invite text
               </button>
             </div>
           ) : null}
 
-          <div className="question-stack">
+          <div className="question-builder-header">
+            <div>
+              <span className="eyebrow">Question flow</span>
+              <h3>Live round builder</h3>
+              <p className="section-copy">
+                Jump between questions from the sidebar, keep every option visible, and reuse good patterns with one-click duplication.
+              </p>
+            </div>
+          </div>
+
+          <div className="builder-workspace builder-workspace--webinar">
+            <aside className="builder-sidebar">
+              <div className="builder-sidebar__top">
+                <span className="question-badge question-badge--webinar">Webinar mode</span>
+                <strong>{questions.length} live questions</strong>
+              </div>
+              <div className="builder-pill-list">
+                {questions.map((question, questionIndex) => (
+                  <button
+                    className={`builder-pill ${currentEditorIndex === questionIndex ? "builder-pill--active builder-pill--webinar" : ""}`}
+                    key={`webinar-pill-${question.displayOrder}`}
+                    draggable
+                    onDragEnd={() => setDraggedQuestionIndex(null)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDragStart={() => setDraggedQuestionIndex(questionIndex)}
+                    onDrop={() => handleQuestionDrop(questionIndex)}
+                    onClick={() => {
+                      setCurrentEditorIndex(questionIndex);
+                      document
+                        .getElementById(`webinar-question-${questionIndex}`)
+                        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }}
+                    type="button"
+                  >
+                    <span>{questionIndex + 1}</span>
+                    <small>{getCollapsedQuestionPreview(question.prompt, questionIndex)}</small>
+                  </button>
+                ))}
+              </div>
+              <button className="secondary-button wide-button" onClick={addQuestion} type="button">
+                Add live question
+              </button>
+            </aside>
+
+            <div className="question-stack">
             {questions.map((question, questionIndex) => {
               const isCollapsed = collapsedQuestions.includes(questionIndex);
 
               return (
                 <article
+                  id={`webinar-question-${questionIndex}`}
                   className={`question-editor ${draggedQuestionIndex === questionIndex ? "question-editor--dragging" : ""}`}
                   key={question.displayOrder}
                   onDragOver={(event) => event.preventDefault()}
@@ -329,6 +403,9 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
                       <button className="secondary-button question-action-button" onClick={() => toggleQuestionCollapse(questionIndex)} type="button">
                         {isCollapsed ? "Expand" : "Collapse"}
                       </button>
+                      <button className="secondary-button question-action-button" onClick={() => duplicateQuestion(questionIndex)} type="button">
+                        Duplicate
+                      </button>
                       {questions.length > 1 ? <button className="text-button button-reset" onClick={() => removeQuestion(questionIndex)} type="button">Remove</button> : null}
                     </div>
                   </div>
@@ -352,6 +429,7 @@ export function WebinarQuizCreateClient({ session }: WebinarQuizCreateClientProp
                 </article>
               );
             })}
+            </div>
           </div>
 
           <div className="question-builder-footer">

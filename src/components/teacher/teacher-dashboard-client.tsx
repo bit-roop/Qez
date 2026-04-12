@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { SkeletonBlock } from "@/components/feedback/skeleton-block";
+import { useToast } from "@/components/feedback/toast-provider";
 import { clearSession, apiFetch, getStoredToken } from "@/lib/client-auth";
 import { MotionPage } from "@/components/motion/motion-shell";
 import { AuthSession } from "@/types/client-auth";
@@ -120,6 +122,7 @@ async function copyQuizInvite(title: string, joinCode: string) {
 }
 
 export function TeacherDashboardClient({ session }: TeacherDashboardClientProps) {
+  const { showToast } = useToast();
   const [activePanel, setActivePanel] = useState<"create" | "library">(() => {
     if (typeof window === "undefined") {
       return "create";
@@ -129,6 +132,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     return saved === "library" ? "library" : "create";
   });
   const [draggedQuestionIndex, setDraggedQuestionIndex] = useState<number | null>(null);
+  const [currentEditorIndex, setCurrentEditorIndex] = useState(0);
   const [quizzes, setQuizzes] = useState<TeacherQuiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,6 +189,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
         current.map((quiz) => (quiz.id === quizId ? data.quiz : quiz))
       );
       setMessage(`Quiz updated to ${state}.`);
+      showToast(`Quiz moved to ${state.toLowerCase()}.`, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to update quiz.");
     }
@@ -213,6 +218,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
 
       setQuizzes((current) => current.filter((quiz) => quiz.id !== quizId));
       setMessage(data.message);
+      showToast(data.message, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to delete quiz.");
     }
@@ -230,6 +236,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       setQuizzes((current) => [data.quiz, ...current]);
       setMessage(data.message);
       setActivePanel("library");
+      showToast(data.message, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to duplicate quiz.");
     }
@@ -255,6 +262,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
         )
       );
       setMessage(data.message);
+      showToast(data.message, "success");
     } catch (caughtError) {
       setError(
         caughtError instanceof Error ? caughtError.message : "Unable to update result visibility."
@@ -288,6 +296,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       link.remove();
       window.URL.revokeObjectURL(url);
       setMessage(`Exported attempts CSV for "${title}".`);
+      showToast(`Exported CSV for ${title}.`, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to export attempts.");
     }
@@ -322,6 +331,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
 
   function addQuestion() {
     setQuestions((current) => [...current, emptyQuestion(current.length + 1)]);
+    setCurrentEditorIndex(questions.length);
 
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -345,6 +355,26 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     setCollapsedQuestions((current) =>
       current.filter((item) => item !== index).map((item) => (item > index ? item - 1 : item))
     );
+    setCurrentEditorIndex((current) => Math.max(0, current > index ? current - 1 : current));
+  }
+
+  function duplicateQuestion(index: number) {
+    setQuestions((current) => {
+      const source = current[index];
+      const clone = {
+        ...source,
+        displayOrder: index + 2,
+        options: source.options.map((option) => ({ ...option }))
+      };
+      const next = [...current];
+      next.splice(index + 1, 0, clone);
+      return next.map((question, questionIndex) => ({
+        ...question,
+        displayOrder: questionIndex + 1
+      }));
+    });
+    setCurrentEditorIndex(index + 1);
+    showToast(`Question ${index + 1} duplicated.`, "success");
   }
 
   function toggleQuestionCollapse(index: number) {
@@ -377,6 +407,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
     }
 
     moveQuestion(draggedQuestionIndex, targetIndex);
+    setCurrentEditorIndex(targetIndex);
     setDraggedQuestionIndex(null);
   }
 
@@ -401,6 +432,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       setUploadedRosterFileName(file.name);
       setMessage(`Imported ${emails.length} allowed participant emails from ${file.name}.`);
       setError(null);
+      showToast(`Imported ${emails.length} roster emails.`, "success");
     } catch {
       setError("Unable to read that roster file.");
     }
@@ -448,6 +480,8 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
       setLatestInvite({ title: data.quiz.title, joinCode: data.quiz.joinCode });
       form.reset();
       setMessage(`Quiz created successfully. Join code: ${data.quiz.joinCode}`);
+      setCurrentEditorIndex(0);
+      showToast(`Quiz created. Join code ${data.quiz.joinCode}.`, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to create quiz.");
     } finally {
@@ -649,15 +683,53 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
               <div>
                 <span className="eyebrow">Questions</span>
                 <h3>Question builder</h3>
+                <p className="section-copy">
+                  Keep every question visible, jump with the sidebar, drag to reorder, and duplicate when you want a fast variation.
+                </p>
               </div>
             </div>
 
-            <div className="question-stack">
+            <div className="builder-workspace builder-workspace--academic">
+              <aside className="builder-sidebar">
+                <div className="builder-sidebar__top">
+                  <span className="question-badge question-badge--academic">Academic mode</span>
+                  <strong>{questions.length} questions</strong>
+                </div>
+                <div className="builder-pill-list">
+                  {questions.map((question, questionIndex) => (
+                    <button
+                      className={`builder-pill ${currentEditorIndex === questionIndex ? "builder-pill--active" : ""}`}
+                      key={question.displayOrder}
+                      draggable
+                      onDragEnd={() => setDraggedQuestionIndex(null)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDragStart={() => setDraggedQuestionIndex(questionIndex)}
+                      onDrop={() => handleQuestionDrop(questionIndex)}
+                      onClick={() => {
+                        setCurrentEditorIndex(questionIndex);
+                        document
+                          .getElementById(`teacher-question-${questionIndex}`)
+                          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }}
+                      type="button"
+                    >
+                      <span>{questionIndex + 1}</span>
+                      <small>{getCollapsedQuestionPreview(question.prompt, questionIndex)}</small>
+                    </button>
+                  ))}
+                </div>
+                <button className="secondary-button wide-button" onClick={addQuestion} type="button">
+                  Add question
+                </button>
+              </aside>
+
+              <div className="question-stack">
               {questions.map((question, questionIndex) => (
                 (() => {
                   const isCollapsed = collapsedQuestions.includes(questionIndex);
                   return (
                 <article
+                  id={`teacher-question-${questionIndex}`}
                   className={`question-editor ${draggedQuestionIndex === questionIndex ? "question-editor--dragging" : ""}`}
                   key={question.displayOrder}
                   onDragOver={(event) => event.preventDefault()}
@@ -691,6 +763,13 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                         type="button"
                       >
                         {isCollapsed ? "Expand" : "Collapse"}
+                      </button>
+                      <button
+                        className="secondary-button question-action-button"
+                        onClick={() => duplicateQuestion(questionIndex)}
+                        type="button"
+                      >
+                        Duplicate
                       </button>
                       {questions.length > 1 ? (
                         <button
@@ -798,6 +877,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                   );
                 })()
               ))}
+              </div>
             </div>
 
             <div className="question-builder-footer">
@@ -827,12 +907,22 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
             Track draft quizzes, live quizzes, and post-attempt activity from a single list.
           </p>
 
-          {isLoading ? <p className="section-copy">Loading quizzes...</p> : null}
+          {isLoading ? (
+            <div className="dashboard-skeleton-grid" aria-hidden="true">
+              <SkeletonBlock className="skeleton--card" />
+              <SkeletonBlock className="skeleton--card" />
+              <SkeletonBlock className="skeleton--card" />
+            </div>
+          ) : null}
 
           {!isLoading && quizzes.length === 0 ? (
             <div className="empty-state">
+              <div className="empty-state__art" aria-hidden="true">📝</div>
               <h3>No quizzes yet</h3>
-              <p className="section-copy">Create your first quiz from the form on the left.</p>
+              <p className="section-copy">Create your first quiz to start collecting responses and analytics.</p>
+              <button className="primary-button" onClick={() => setActivePanel("create")} type="button">
+                Create your first quiz
+              </button>
             </div>
           ) : null}
 
@@ -905,6 +995,7 @@ export function TeacherDashboardClient({ session }: TeacherDashboardClientProps)
                     onClick={() => {
                       void copyQuizInvite(quiz.title, quiz.joinCode);
                       setMessage(`Invite copied for "${quiz.title}".`);
+                      showToast(`Invite copied for ${quiz.title}.`, "success");
                     }}
                     type="button"
                   >

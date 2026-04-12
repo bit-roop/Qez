@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SkeletonBlock } from "@/components/feedback/skeleton-block";
+import { useToast } from "@/components/feedback/toast-provider";
 import { apiFetch, getStoredToken } from "@/lib/client-auth";
 import { getProfileHoverLabel } from "@/lib/profile";
 
@@ -166,6 +168,7 @@ function getWebinarPhase(
 }
 
 export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
+  const { showToast } = useToast();
   const [data, setData] = useState<AttemptQuizData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, "A" | "B" | "C" | "D">>({});
@@ -621,6 +624,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
 
       setResult(submitResult);
       window.localStorage.removeItem(getAttemptStorageKey(quizId));
+      showToast("Quiz submitted successfully.", "success");
     } catch (caughtError) {
       if (!isSilent) {
         setError(caughtError instanceof Error ? caughtError.message : "Unable to submit attempt.");
@@ -653,10 +657,15 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   if (isLoading) {
     return (
       <section className="attempt-shell">
-        <article className="attempt-stage">
+        <article className="attempt-stage attempt-stage--minimal">
           <span className="eyebrow">Loading</span>
-          <h1>Preparing your quiz arena...</h1>
-          <p className="section-copy">Fetching questions, timings, and attempt status.</p>
+          <h1>Preparing your quiz room...</h1>
+          <div className="dashboard-skeleton-grid" aria-hidden="true">
+            <SkeletonBlock className="skeleton--title" />
+            <SkeletonBlock className="skeleton--text" />
+            <SkeletonBlock className="skeleton--card" />
+            <SkeletonBlock className="skeleton--card" />
+          </div>
         </article>
       </section>
     );
@@ -684,33 +693,29 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   if (result) {
     return (
       <section className="attempt-shell">
-        <article className="attempt-stage attempt-stage--result">
+        <article className="attempt-stage attempt-stage--result attempt-stage--submitted">
           <span className="eyebrow">Submitted</span>
-          <h1>You completed {data.quiz.title}.</h1>
-          <div className="attempt-result-grid">
+          <div className="attempt-submit-burst" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <h1>Submitted!</h1>
+          <p className="section-copy">
+            You&apos;ll see results when the quiz closes. Your answers are safely locked in on the server.
+          </p>
+          <div className="attempt-result-grid attempt-result-grid--compact">
             <article className="metric-card">
-              <strong>{result.attempt.totalScore}</strong>
-              <span>Your score</span>
+              <strong>{result.attempt.responses.length}</strong>
+              <span>Questions answered</span>
             </article>
             <article className="metric-card">
               <strong>{result.attempt.totalTimeSeconds}s</strong>
-              <span>Total response time</span>
-            </article>
-            <article className="metric-card">
-              <strong>{result.attempt.responses.length}</strong>
-              <span>Answered questions</span>
+              <span>Time recorded</span>
             </article>
           </div>
-          <p className="section-copy">
-            {result.leaderboardEligible
-              ? "Your webinar responses were locked in against the live room timeline."
-              : "Your academic attempt has been securely scored on the server."}
-          </p>
           <div className="hero-actions">
-            <Link className="primary-button" href={`/quizzes/${quizId}/result`}>
-              Review result
-            </Link>
-            <Link className="secondary-button" href="/dashboard/student">
+            <Link className="primary-button" href="/dashboard/student">
               Back to dashboard
             </Link>
           </div>
@@ -784,60 +789,8 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const showWebinarReveal = Boolean(isWebinar && webinarPhase?.phase === "reveal");
 
   return (
-    <section className="attempt-shell">
-      <aside className="attempt-sidebar">
-        <span className="eyebrow">Qez Arena</span>
-        <h1>{data.quiz.title}</h1>
-        <p className="section-copy">
-          {isWebinar
-            ? "Live room mode is on. Answers lock instantly and the next stage stays synchronized for everyone."
-            : "Focus on accuracy and pace. Leaving the screen will submit your academic attempt."}
-        </p>
-
-        <div className="attempt-sidebar-meta">
-          <span className={`pill ${isWebinar ? "pill--webinar" : "pill--academic"}`}>{data.quiz.mode}</span>
-          <span className="pill pill-outline">{data.quiz.questionCount} questions</span>
-          <span className={`pill ${warningCount >= 3 ? "pill-warning-critical" : "pill-warning"}`}>
-            Warnings: {warningCount}
-          </span>
-        </div>
-
-        <div className="attempt-progress-panel">
-          <div className="attempt-progress-top">
-            <strong>{answeredCount}/{data.quiz.questionCount}</strong>
-            <span>Questions answered</span>
-          </div>
-          <div className="attempt-progress-track">
-            <div className="attempt-progress-fill" style={{ width: `${(answeredCount / data.quiz.questionCount) * 100}%` }} />
-          </div>
-        </div>
-
-        <div className="attempt-sidebar-note">
-          <strong>{isWebinar ? "Synced round is on" : "Secure exit is on"}</strong>
-          <span>
-            {isWebinar
-              ? "Rejoining brings you back to the live room timeline and the current active question."
-              : "Press back again to exit and submit your quiz."}
-          </span>
-        </div>
-
-        {!isWebinar ? (
-          <div className="attempt-index-grid">
-            {questions.map((question, index) => (
-              <button
-                className={`attempt-index-pill ${index === currentIndex ? "attempt-index-pill--active" : ""} ${selectedAnswers[question.id] ? "attempt-index-pill--done" : ""}`}
-                key={question.id}
-                onClick={() => setCurrentIndex(index)}
-                type="button"
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </aside>
-
-      <article className="attempt-stage">
+    <section className={`attempt-shell ${isWebinar ? "attempt-shell--webinar" : "attempt-shell--academic"}`}>
+      <article className="attempt-stage attempt-stage--focused">
         {warningMessage ? (
           <div className="attempt-warning-overlay">
             <div className="attempt-warning-card">
@@ -897,23 +850,38 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
           </div>
         ) : (
           <>
-            <div className="attempt-stage-top">
-              <div>
-                <span className="eyebrow">
-                  Question {currentQuestion.displayOrder}
-                  {isWebinar ? " • Live room" : ""}
-                </span>
-                <h2>{currentQuestion.prompt}</h2>
-                <div className="attempt-question-meta">
-                  <span className="pill pill-outline">{currentQuestion.difficulty}</span>
-                  <span className="pill pill-outline">
-                    {lockedAnswer ? `Selected: ${lockedAnswer}` : "No answer selected"}
-                  </span>
-                </div>
+            <div className={`attempt-topbar ${currentQuestionRemaining <= 60 ? "attempt-topbar--urgent" : ""}`}>
+              <div className="attempt-topbar__meta">
+                <span className={`pill ${isWebinar ? "pill--webinar" : "pill--academic"}`}>{data.quiz.mode}</span>
+                <span className="attempt-topbar__count">Q{currentQuestion.displayOrder} of {data.quiz.questionCount}</span>
+                <span className="attempt-topbar__answered">{answeredCount} answered</span>
               </div>
-              <div className="attempt-timer-card">
+              <div className={`attempt-timer-card ${currentQuestionRemaining <= 60 ? "attempt-timer-card--danger" : ""}`}>
                 <strong>{currentQuestionRemaining}s</strong>
-                <span>{isWebinar ? "Shared room timer" : "Question timer"}</span>
+                <span>{isWebinar ? "Shared timer" : "Time left"}</span>
+              </div>
+            </div>
+
+            <div className="attempt-progress-panel attempt-progress-panel--full">
+              <div className="attempt-progress-top">
+                <strong>{Math.round((answeredCount / data.quiz.questionCount) * 100)}%</strong>
+                <span>Progress</span>
+              </div>
+              <div className="attempt-progress-track">
+                <div className="attempt-progress-fill" style={{ width: `${(answeredCount / data.quiz.questionCount) * 100}%` }} />
+              </div>
+            </div>
+
+            <div className="attempt-question-panel">
+              <span className="eyebrow">
+                {isWebinar ? "Live synchronized question" : "Stay focused on this question"}
+              </span>
+              <h2>{currentQuestion.prompt}</h2>
+              <div className="attempt-question-meta">
+                <span className="pill pill-outline">{currentQuestion.difficulty}</span>
+                <span className="pill pill-outline">
+                  {lockedAnswer ? `Selected: ${lockedAnswer}` : "Choose one answer"}
+                </span>
               </div>
             </div>
 
@@ -921,7 +889,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
               <p className="status-banner status-banner--error">{data.availabilityMessage}</p>
             ) : null}
 
-            <div className="attempt-options-grid">
+            <div className="attempt-options-grid attempt-options-grid--stacked">
               {currentQuestion.options.map((option) => {
                 const isSelected = selectedAnswers[currentQuestion.id] === option.optionKey;
                 const disabled = isWebinar ? Boolean(lockedAnswer) : false;

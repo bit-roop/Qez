@@ -6,9 +6,21 @@ const SMTP_SECURE = process.env.SMTP_SECURE === "true";
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
+const TEST_ALIAS_DOMAIN = "qez.com";
+const TEST_ALIAS_INBOX = "roopeshsinghal2006@gmail.com";
 
 export function isSmtpConfigured() {
   return Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && SMTP_FROM_EMAIL);
+}
+
+function resolveDeliveryInbox(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (normalizedEmail.endsWith(`@${TEST_ALIAS_DOMAIN}`)) {
+    return TEST_ALIAS_INBOX;
+  }
+
+  return normalizedEmail;
 }
 
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
@@ -31,7 +43,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
 
   await transporter.sendMail({
     from: SMTP_FROM_EMAIL,
-    to,
+    to: resolveDeliveryInbox(to),
     subject: "Reset your Qez password",
     text: `Hello,
 
@@ -91,7 +103,7 @@ export async function sendEmailVerificationEmail(to: string, verificationLink: s
 
   await transporter.sendMail({
     from: SMTP_FROM_EMAIL,
-    to,
+    to: resolveDeliveryInbox(to),
     subject: "Verify your Qez email",
     text: `Hello,
 

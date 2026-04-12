@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SkeletonBlock } from "@/components/feedback/skeleton-block";
+import { useToast } from "@/components/feedback/toast-provider";
 import { apiFetch, clearSession } from "@/lib/client-auth";
 import { MotionPage } from "@/components/motion/motion-shell";
 import { AuthSession } from "@/types/client-auth";
@@ -40,6 +42,7 @@ async function copyQuizInvite(title: string, joinCode: string) {
 const WAITING_ROOM_COUNTDOWN_MS = 45 * 1000;
 
 export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClientProps) {
+  const { showToast } = useToast();
   const [quizzes, setQuizzes] = useState<WebinarQuiz[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -119,6 +122,7 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
       });
       setQuizzes((current) => current.map((quiz) => (quiz.id === quizId ? data.quiz : quiz)));
       setMessage(`Webinar quiz moved to ${state.toLowerCase()}.`);
+      showToast(`Webinar quiz moved to ${state.toLowerCase()}.`, "success");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to update webinar quiz.");
     }
@@ -181,14 +185,23 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
             </Link>
           </div>
 
-          {isLoading ? <p className="section-copy">Loading webinar quizzes...</p> : null}
+          {isLoading ? (
+            <div className="dashboard-skeleton-grid" aria-hidden="true">
+              <SkeletonBlock className="skeleton--card" />
+              <SkeletonBlock className="skeleton--card" />
+            </div>
+          ) : null}
 
           {!isLoading && quizzes.length === 0 ? (
             <div className="empty-state">
+              <div className="empty-state__art" aria-hidden="true">🎤</div>
               <h3>No webinar quizzes yet</h3>
               <p className="section-copy">
-                Use your webinar-host account to create webinar quizzes. If you want, I can add a separate host create screen next.
+                Build your first live round to unlock podium reveals, winner exports, and synced room control.
               </p>
+              <Link className="primary-button" href="/dashboard/host/create">
+                Create your first webinar quiz
+              </Link>
             </div>
           ) : null}
 
@@ -246,6 +259,7 @@ export function WebinarHostDashboardClient({ session }: WebinarHostDashboardClie
                     onClick={() => {
                       void copyQuizInvite(quiz.title, quiz.joinCode);
                       setMessage(`Invite copied for "${quiz.title}".`);
+                      showToast(`Invite copied for ${quiz.title}.`, "success");
                     }}
                     type="button"
                   >
