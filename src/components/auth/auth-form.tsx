@@ -27,9 +27,9 @@ type AuthFormProps = {
 };
 
 const registerRoles = [
-  { value: "STUDENT", label: "Student" },
-  { value: "TEACHER", label: "Teacher" },
-  { value: "WEBINAR_HOST", label: "Webinar Host" }
+  { value: "STUDENT",      label: "Student",      emoji: "🎓", desc: "I'm joining quizzes" },
+  { value: "TEACHER",      label: "Teacher",      emoji: "👩‍🏫", desc: "I'm creating quizzes" },
+  { value: "WEBINAR_HOST", label: "Webinar Host", emoji: "🎤", desc: "I'm running live events" },
 ] as const;
 
 export function AuthForm({ mode }: AuthFormProps) {
@@ -43,34 +43,24 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [isTurnstileReady, setIsTurnstileReady] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("STUDENT");
   const captchaContainerRef = useRef<HTMLDivElement | null>(null);
   const turnstileRenderedRef = useRef(false);
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const oauthError = useMemo(() => {
     const code = searchParams.get("error") ?? searchParams.get("verified");
-
     switch (code) {
-      case "google-not-configured":
-        return "Google sign-in is not configured for this environment.";
-      case "google-state-mismatch":
-        return "Google sign-in expired or the callback URL did not match. Try again.";
-      case "google-token":
-        return "Google sign-in could not exchange the authorization code.";
-      case "google-userinfo":
-        return "Google sign-in could not load your profile.";
-      case "google-email-not-verified":
-        return "Your Google email must be verified before you can sign in.";
-      case "google-callback":
-        return "Google sign-in failed during the callback step.";
-      case "success":
-        return "Your email has been verified. You can sign in now.";
-      case "invalid":
-        return "That verification link is invalid or expired.";
-      case "missing":
-        return "Verification link is missing a token.";
-      default:
-        return null;
+      case "google-not-configured":   return "Google sign-in is not configured for this environment.";
+      case "google-state-mismatch":   return "Google sign-in expired or the callback URL did not match. Try again.";
+      case "google-token":            return "Google sign-in could not exchange the authorization code.";
+      case "google-userinfo":         return "Google sign-in could not load your profile.";
+      case "google-email-not-verified": return "Your Google email must be verified before you can sign in.";
+      case "google-callback":         return "Google sign-in failed during the callback step.";
+      case "success":                 return "Your email has been verified. You can sign in now.";
+      case "invalid":                 return "That verification link is invalid or expired.";
+      case "missing":                 return "Verification link is missing a token.";
+      default:                        return null;
     }
   }, [searchParams]);
 
@@ -81,16 +71,13 @@ export function AuthForm({ mode }: AuthFormProps) {
       !captchaContainerRef.current ||
       !window.turnstile ||
       turnstileRenderedRef.current
-    ) {
-      return;
-    }
+    ) return;
 
     window.turnstile.render(captchaContainerRef.current, {
       sitekey: turnstileSiteKey,
       callback: (token) => setCaptchaToken(token),
-      "expired-callback": () => setCaptchaToken(null)
+      "expired-callback": () => setCaptchaToken(null),
     });
-
     turnstileRenderedRef.current = true;
   }, [isTurnstileReady, turnstileSiteKey]);
 
@@ -103,44 +90,42 @@ export function AuthForm({ mode }: AuthFormProps) {
       setError("Please complete the captcha before continuing.");
       return;
     }
-
     if (!turnstileSiteKey && !isHumanChecked) {
       setError("Please verify that you are a human before continuing.");
       return;
     }
 
     setIsSubmitting(true);
-
     const formData = new FormData(event.currentTarget);
     const payload =
       mode === "login"
         ? {
             email: String(formData.get("email") ?? ""),
             password: String(formData.get("password") ?? ""),
-            captchaToken: captchaToken ?? undefined
+            captchaToken: captchaToken ?? undefined,
           }
         : {
             name: String(formData.get("name") ?? ""),
             email: String(formData.get("email") ?? ""),
             password: String(formData.get("password") ?? ""),
-            role: String(formData.get("role") ?? "STUDENT"),
-            captchaToken: captchaToken ?? undefined
+            role: selectedRole,
+            captchaToken: captchaToken ?? undefined,
           };
 
     try {
       const response = await fetch(`/api/auth/${mode}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      const data = (await response.json()) as { error?: string; message?: string; requiresVerification?: boolean } & AuthSession;
+      const data = (await response.json()) as {
+        error?: string;
+        message?: string;
+        requiresVerification?: boolean;
+      } & AuthSession;
 
-      if (!response.ok) {
-        throw new Error(data.error ?? "Authentication failed.");
-      }
+      if (!response.ok) throw new Error(data.error ?? "Authentication failed.");
 
       if (data.requiresVerification) {
         setMessage(data.message ?? "Account created. Please verify your email before signing in.");
@@ -169,34 +154,21 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   async function handleResendVerification() {
     const email = searchParams.get("email");
-
     if (!email) {
       setError("Add ?email=you@example.com to the login URL to resend verification.");
       return;
     }
-
     setIsResendingVerification(true);
     setError(null);
     setMessage(null);
-
     try {
       const response = await fetch("/api/auth/resend-verification", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          email,
-          captchaToken
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, captchaToken }),
       });
-
       const data = (await response.json()) as { error?: string; message?: string };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to resend verification email.");
-      }
-
+      if (!response.ok) throw new Error(data.error ?? "Unable to resend verification email.");
       setMessage(data.message ?? "Verification email sent.");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to resend verification email.");
@@ -208,7 +180,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const isLogin = mode === "login";
   const googleEnabled = Boolean(
     process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true" ||
-      process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "1"
+    process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "1"
   );
   const showResendVerification =
     isLogin && Boolean(error?.toLowerCase().includes("verify your email"));
@@ -222,29 +194,45 @@ export function AuthForm({ mode }: AuthFormProps) {
           strategy="afterInteractive"
         />
       ) : null}
-      <section className="auth-panel auth-panel-brand">
+
+      {/* Left brand panel */}
+      <section className="auth-panel auth-panel-brand" aria-label="Qez brand panel">
         <span className="eyebrow">Qez</span>
-        <h1>{isLogin ? "Welcome back to your quiz command center." : "Launch assessments and live competitions from one platform."}</h1>
+        <h1>
+          {isLogin
+            ? "Welcome back to your quiz command center."
+            : "Build quizzes. Run live events. See results instantly."}
+        </h1>
         <p className="section-copy">
           {isLogin
-            ? "Sign in to manage quizzes, track scores, and monitor event performance."
-            : "Create an account to build timed assessments, run webinar contests, and analyze results securely."}
+            ? "Sign in to manage quizzes, track scores, and monitor your event performance."
+            : "Create a free account to build timed assessments, run webinar competitions, and analyse results securely."}
         </p>
+
         <div className="metric-row">
           <div className="metric-card">
             <strong>2 modes</strong>
-            <span>Academic and webinar workflows in one system.</span>
+            <span>Academic &amp; webinar workflows in one system.</span>
           </div>
           <div className="metric-card">
             <strong>Server scoring</strong>
-            <span>Results stay trusted because scoring lives on the backend.</span>
+            <span>Results stay trusted — scoring lives on the backend.</span>
           </div>
         </div>
+
+        {!isLogin && (
+          <div className="auth-brand-note">
+            <span>🔐</span>
+            <p>Sign-up is required to take quizzes — this keeps your scores secure and prevents bots from joining.</p>
+          </div>
+        )}
       </section>
 
-      <section className="auth-panel auth-panel-form">
+      {/* Right form panel */}
+      <section className="auth-panel auth-panel-form" aria-label={isLogin ? "Login form" : "Register form"}>
         <span className="eyebrow">{isLogin ? "Login" : "Register"}</span>
         <h2>{isLogin ? "Sign in" : "Create your account"}</h2>
+
         {googleEnabled ? (
           <div className="auth-social-block">
             <a className="secondary-button auth-social-button" href="/api/auth/google/start">
@@ -253,17 +241,18 @@ export function AuthForm({ mode }: AuthFormProps) {
             <span className="inline-note">Google sign-in creates a student account by default.</span>
           </div>
         ) : null}
-        <form className="auth-form" onSubmit={handleSubmit}>
+
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
           {!isLogin ? (
             <label className="field">
               <span>Full name</span>
-              <input name="name" placeholder="Enter your full name" required type="text" />
+              <input name="name" placeholder="Enter your full name" required type="text" autoComplete="name" />
             </label>
           ) : null}
 
           <label className="field">
             <span>Email</span>
-            <input name="email" placeholder="you@example.com" required type="email" />
+            <input name="email" placeholder="you@example.com" required type="email" autoComplete="email" />
           </label>
 
           <label className="field">
@@ -271,14 +260,15 @@ export function AuthForm({ mode }: AuthFormProps) {
             <div className="password-field">
               <input
                 name="password"
-                placeholder="At least 8 characters"
+                placeholder={isLogin ? "Your password" : "At least 8 characters"}
                 required
                 type={showPassword ? "text" : "password"}
+                autoComplete={isLogin ? "current-password" : "new-password"}
               />
               <button
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 className="password-toggle button-reset"
-                onClick={() => setShowPassword((current) => !current)}
+                onClick={() => setShowPassword((c) => !c)}
                 type="button"
               >
                 {showPassword ? "Hide" : "Show"}
@@ -286,19 +276,31 @@ export function AuthForm({ mode }: AuthFormProps) {
             </div>
           </label>
 
+          {/* Visual role selector for registration */}
           {!isLogin ? (
-            <label className="field">
-              <span>Role</span>
-              <select defaultValue="STUDENT" name="role">
+            <div className="field">
+              <span>I am a…</span>
+              <input type="hidden" name="role" value={selectedRole} />
+              <div className="auth-role-grid" role="radiogroup" aria-label="Select your role">
                 {registerRoles.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
+                  <button
+                    key={role.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedRole === role.value}
+                    className={`auth-role-card button-reset ${selectedRole === role.value ? "auth-role-card--active" : ""}`}
+                    onClick={() => setSelectedRole(role.value)}
+                  >
+                    <span className="auth-role-emoji" aria-hidden>{role.emoji}</span>
+                    <strong>{role.label}</strong>
+                    <span className="auth-role-desc">{role.desc}</span>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
           ) : null}
 
+          {/* CAPTCHA */}
           {turnstileSiteKey ? (
             <div className="captcha-block">
               <div ref={captchaContainerRef} />
@@ -311,18 +313,24 @@ export function AuthForm({ mode }: AuthFormProps) {
             <label className="human-check">
               <input
                 checked={isHumanChecked}
-                onChange={(event) => setIsHumanChecked(event.target.checked)}
+                onChange={(e) => setIsHumanChecked(e.target.checked)}
                 type="checkbox"
               />
               <span>Verify that you are a human</span>
             </label>
           )}
 
-          {message ? <p className="form-success">{message}</p> : null}
-          {error || oauthError ? <p className="form-error">{error ?? oauthError}</p> : null}
+          {message ? <p className="form-success" role="status">{message}</p> : null}
+          {error || oauthError ? (
+            <p className="form-error" role="alert">{error ?? oauthError}</p>
+          ) : null}
 
           <button className="primary-link button-reset wide-button" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Please wait..." : isLogin ? "Login" : "Create account"}
+            {isSubmitting
+              ? "Please wait…"
+              : isLogin
+                ? "Sign in →"
+                : "Create account →"}
           </button>
         </form>
 
@@ -333,14 +341,14 @@ export function AuthForm({ mode }: AuthFormProps) {
             onClick={() => void handleResendVerification()}
             type="button"
           >
-            {isResendingVerification ? "Sending..." : "Resend verification email"}
+            {isResendingVerification ? "Sending…" : "Resend verification email"}
           </button>
         ) : null}
 
         <p className="auth-switch">
           {isLogin ? "Need an account?" : "Already have an account?"}{" "}
           <Link href={isLogin ? "/register" : "/login"}>
-            {isLogin ? "Register" : "Login"}
+            {isLogin ? "Register" : "Log in"}
           </Link>
         </p>
         {isLogin ? (
