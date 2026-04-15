@@ -398,7 +398,12 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   }, [data, isWebinar, quizId]);
 
   useEffect(() => {
-    if (!data?.quiz.canAttemptNow || result) {
+    if (
+      !data ||
+      result ||
+      data.attempt?.status === "SUBMITTED" ||
+      data.attempt?.status === "AUTO_SUBMITTED"
+    ) {
       return;
     }
 
@@ -412,11 +417,13 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       setWarningCount((current) => current + 1);
       setWarningMessage(message);
 
+      const timeoutMs = showExitWarningDialog ? ACADEMIC_EXIT_WINDOW_MS : 3000;
+
       window.setTimeout(() => {
-        if (active) {
+        if (active && !showExitWarningDialog) {
           setWarningMessage((current) => (current === message ? null : current));
         }
-      }, 2400);
+      }, timeoutMs);
 
       try {
         const response = await apiFetch<{
@@ -532,7 +539,7 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
       window.removeEventListener("blur", handleWindowBlur);
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [data?.quiz.canAttemptNow, quizId, result]);
+  }, [data, quizId, result]);
 
   async function submitWithKeepalive() {
     if (!data || isAutoSubmittingRef.current) {
@@ -690,6 +697,44 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
     return null;
   }
 
+  if (
+    data.attempt &&
+    (data.attempt.status === "SUBMITTED" || data.attempt.status === "AUTO_SUBMITTED") &&
+    !result
+  ) {
+    return (
+      <section className="attempt-shell">
+        <article className="attempt-stage attempt-stage--result attempt-stage--submitted">
+          <span className="eyebrow">Submitted</span>
+          <div className="attempt-submit-burst" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <h1>Already submitted</h1>
+          <p className="section-copy">
+            This attempt is already locked in. You&apos;ll see results when the quiz closes.
+          </p>
+          <div className="attempt-result-grid attempt-result-grid--compact">
+            <article className="metric-card">
+              <strong>{data.attempt.warningLevel}</strong>
+              <span>Warnings on record</span>
+            </article>
+            <article className="metric-card">
+              <strong>{data.attempt.totalTimeSeconds}s</strong>
+              <span>Time recorded</span>
+            </article>
+          </div>
+          <div className="hero-actions">
+            <Link className="primary-button" href="/dashboard/student">
+              Back to dashboard
+            </Link>
+          </div>
+        </article>
+      </section>
+    );
+  }
+
   if (result) {
     return (
       <section className="attempt-shell">
@@ -789,17 +834,17 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
   const showWebinarReveal = Boolean(isWebinar && webinarPhase?.phase === "reveal");
 
   return (
-    <section className={`attempt-shell ${isWebinar ? "attempt-shell--webinar" : "attempt-shell--academic"}`}>
+    <section className={`attempt-shell attempt-shell--desktop ${isWebinar ? "attempt-shell--webinar" : "attempt-shell--academic"}`}>
       <article className="attempt-stage attempt-stage--focused">
         {warningMessage ? (
-          <div className="attempt-warning-overlay">
-            <div className="attempt-warning-card">
-              <span className="eyebrow">{exitCountdownActive ? "Exit Warning" : "Focus Warning"}</span>
-              <h3>{warningMessage}</h3>
-              <p className="section-copy">
-                Warning level: {warningCount}. Suspicious activity is logged for review.
-              </p>
-              {showExitWarningDialog ? (
+          showExitWarningDialog ? (
+            <div className="attempt-warning-overlay attempt-warning-overlay--blocking">
+              <div className="attempt-warning-card">
+                <span className="eyebrow">{exitCountdownActive ? "Exit Warning" : "Focus Warning"}</span>
+                <h3>{warningMessage}</h3>
+                <p className="section-copy">
+                  Warning level: {warningCount}. Suspicious activity is logged for review.
+                </p>
                 <div className="attempt-warning-actions">
                   <button
                     className="secondary-button"
@@ -814,12 +859,25 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
                     Continue without leaving
                   </button>
                 </div>
-              ) : null}
-              {warningCount >= 3 ? (
-                <p className="status-banner status-banner--error">This attempt is now flagged as suspicious.</p>
-              ) : null}
+                {warningCount >= 3 ? (
+                  <p className="status-banner status-banner--error">This attempt is now flagged as suspicious.</p>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="attempt-warning-banner" role="status" aria-live="polite">
+              <div className="attempt-warning-card attempt-warning-card--banner">
+                <span className="eyebrow">Focus Warning</span>
+                <h3>{warningMessage}</h3>
+                <p className="section-copy">
+                  Warning level: {warningCount}. Suspicious activity is logged for review.
+                </p>
+                {warningCount >= 3 ? (
+                  <p className="status-banner status-banner--error">This attempt is now flagged as suspicious.</p>
+                ) : null}
+              </div>
+            </div>
+          )
         ) : null}
 
         {showWebinarReveal ? (
@@ -850,132 +908,165 @@ export function QuizAttemptClient({ quizId }: QuizAttemptClientProps) {
           </div>
         ) : (
           <>
-            <div className={`attempt-topbar ${currentQuestionRemaining <= 60 ? "attempt-topbar--urgent" : ""}`}>
-              <div className="attempt-topbar__meta">
-                <span className={`pill ${isWebinar ? "pill--webinar" : "pill--academic"}`}>{data.quiz.mode}</span>
-                <span className="attempt-topbar__count">Q{currentQuestion.displayOrder} of {data.quiz.questionCount}</span>
-                <span className="attempt-topbar__answered">{answeredCount} answered</span>
-              </div>
-              <div className={`attempt-timer-card ${currentQuestionRemaining <= 60 ? "attempt-timer-card--danger" : ""}`}>
-                <strong>{currentQuestionRemaining}s</strong>
-                <span>{isWebinar ? "Shared timer" : "Time left"}</span>
-              </div>
-            </div>
+            <aside className="attempt-desktop-rail">
+              <div className="attempt-rail-summary">
+                <div className={`attempt-topbar ${currentQuestionRemaining <= 60 ? "attempt-topbar--urgent" : ""}`}>
+                  <div className="attempt-topbar__meta">
+                    <span className={`pill ${isWebinar ? "pill--webinar" : "pill--academic"}`}>{data.quiz.mode}</span>
+                    <span className="attempt-topbar__count">Q{currentQuestion.displayOrder} of {data.quiz.questionCount}</span>
+                    <span className="attempt-topbar__answered">{answeredCount} answered</span>
+                  </div>
+                </div>
 
-            <div className="attempt-progress-panel attempt-progress-panel--full">
-              <div className="attempt-progress-top">
-                <strong>{Math.round((answeredCount / data.quiz.questionCount) * 100)}%</strong>
-                <span>Progress</span>
+                <div className="attempt-timer-sticky">
+                  <div className={`attempt-timer-card ${currentQuestionRemaining <= 60 ? "attempt-timer-card--danger" : ""}`}>
+                    <strong>{currentQuestionRemaining}s</strong>
+                    <span>{isWebinar ? "Shared timer" : "Time left"}</span>
+                  </div>
+                </div>
               </div>
-              <div className="attempt-progress-track">
-                <div className="attempt-progress-fill" style={{ width: `${(answeredCount / data.quiz.questionCount) * 100}%` }} />
+
+              <div className="attempt-progress-panel attempt-progress-panel--full">
+                <div className="attempt-progress-top">
+                  <strong>{Math.round((answeredCount / data.quiz.questionCount) * 100)}%</strong>
+                  <span>Progress</span>
+                </div>
+                <div className="attempt-progress-track">
+                  <div className="attempt-progress-fill" style={{ width: `${(answeredCount / data.quiz.questionCount) * 100}%` }} />
+                </div>
               </div>
-            </div>
 
-            <div className="attempt-question-panel">
-              <span className="eyebrow">
-                {isWebinar ? "Live synchronized question" : "Stay focused on this question"}
-              </span>
-              <h2>{currentQuestion.prompt}</h2>
-              <div className="attempt-question-meta">
-                <span className="pill pill-outline">{currentQuestion.difficulty}</span>
-                <span className="pill pill-outline">
-                  {lockedAnswer ? `Selected: ${lockedAnswer}` : "Choose one answer"}
-                </span>
+              <div className="attempt-integrity-card">
+                <span className="eyebrow">Integrity watch</span>
+                <h3>{warningCount >= 3 ? "Flag raised" : "Proctoring active"}</h3>
+                <p className="section-copy">
+                  {warningCount > 0
+                    ? `${warningCount} warning${warningCount === 1 ? "" : "s"} logged for this attempt.`
+                    : "No warnings logged yet. Stay on this tab and keep the quiz in focus."}
+                </p>
+                <div className="attempt-integrity-stats">
+                  <span className={`pill ${warningCount >= 3 ? "pill-warning-critical" : "pill-warning"}`}>
+                    Warning level {warningCount}
+                  </span>
+                  <span className="pill pill-outline">
+                    {warningCount >= 3 ? "Flagged for review" : "Live review enabled"}
+                  </span>
+                </div>
+                <ul className="attempt-integrity-list">
+                  <li>Tab switches and fullscreen exits are recorded.</li>
+                  <li>Right click, copy, and devtools shortcuts are blocked.</li>
+                  <li>Warnings stay attached to this attempt for review.</li>
+                </ul>
               </div>
-            </div>
 
-            {data.availabilityMessage && !isWebinar ? (
-              <p className="status-banner status-banner--error">{data.availabilityMessage}</p>
-            ) : null}
-
-            <div className="attempt-options-grid attempt-options-grid--stacked">
-              {currentQuestion.options.map((option) => {
-                const isSelected = selectedAnswers[currentQuestion.id] === option.optionKey;
-                const disabled = isWebinar ? Boolean(lockedAnswer) : false;
-
-                return (
+              <div className="attempt-rail-actions">
+                {!isWebinar ? (
                   <button
-                    className={`attempt-option ${isSelected ? "attempt-option--selected" : ""}`}
-                    disabled={disabled && !isSelected}
-                    key={option.optionKey}
-                    onClick={() => chooseAnswer(option.optionKey)}
+                    className="secondary-button"
+                    disabled={currentIndex === 0}
+                    onClick={() => setCurrentIndex((current) => Math.max(current - 1, 0))}
                     type="button"
                   >
-                    <span className="attempt-option-key">{option.optionKey}</span>
-                    <span>{option.optionText}</span>
+                    Previous
                   </button>
-                );
-              })}
+                ) : (
+                  <div className="question-badge">Synchronized webinar flow</div>
+                )}
+
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    void document.documentElement.requestFullscreen?.();
+                  }}
+                  type="button"
+                >
+                  Focus mode
+                </button>
+
+                {!isWebinar ? (
+                  <button
+                    className="secondary-button"
+                    onClick={() =>
+                      setSelectedAnswers((current) => {
+                        const nextAnswers = { ...current };
+                        delete nextAnswers[currentQuestion.id];
+                        return nextAnswers;
+                      })
+                    }
+                    type="button"
+                  >
+                    Clear choice
+                  </button>
+                ) : null}
+
+                {!isWebinar ? (
+                  currentIndex < questions.length - 1 ? (
+                    <button
+                      className="primary-button"
+                      onClick={() => setCurrentIndex((current) => Math.min(current + 1, questions.length - 1))}
+                      type="button"
+                    >
+                      Next question
+                    </button>
+                  ) : (
+                    <button
+                      className="primary-button"
+                      disabled={!data.quiz.canAttemptNow || isSubmitting}
+                      onClick={() => void handleSubmit()}
+                      type="button"
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit quiz"}
+                    </button>
+                  )
+                ) : (
+                  <span className="section-copy">
+                    {lockedAnswer ? "Answer locked for this question." : "Pick once to lock your answer for the room."}
+                  </span>
+                )}
+              </div>
+            </aside>
+
+            <div className="attempt-desktop-main">
+              <div className="attempt-question-panel">
+                <span className="eyebrow">
+                  {isWebinar ? "Live synchronized question" : "Stay focused on this question"}
+                </span>
+                <h2>{currentQuestion.prompt}</h2>
+                <div className="attempt-question-meta">
+                  <span className="pill pill-outline">{currentQuestion.difficulty}</span>
+                  <span className="pill pill-outline">
+                    {lockedAnswer ? `Selected: ${lockedAnswer}` : "Choose one answer"}
+                  </span>
+                </div>
+              </div>
+
+              {data.availabilityMessage && !isWebinar ? (
+                <p className="status-banner status-banner--error">{data.availabilityMessage}</p>
+              ) : null}
+
+              <div className="attempt-options-grid attempt-options-grid--stacked">
+                {currentQuestion.options.map((option) => {
+                  const isSelected = selectedAnswers[currentQuestion.id] === option.optionKey;
+                  const disabled = isWebinar ? Boolean(lockedAnswer) : false;
+
+                  return (
+                    <button
+                      className={`attempt-option ${isSelected ? "attempt-option--selected" : ""}`}
+                      disabled={disabled && !isSelected}
+                      key={option.optionKey}
+                      onClick={() => chooseAnswer(option.optionKey)}
+                      type="button"
+                    >
+                      <span className="attempt-option-key">{option.optionKey}</span>
+                      <span>{option.optionText}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}
 
-        <div className="attempt-stage-footer">
-          {!isWebinar ? (
-            <button
-              className="secondary-button"
-              disabled={currentIndex === 0}
-              onClick={() => setCurrentIndex((current) => Math.max(current - 1, 0))}
-              type="button"
-            >
-              Previous
-            </button>
-          ) : (
-            <div className="question-badge">Synchronized webinar flow</div>
-          )}
-
-          <div className="attempt-stage-actions">
-            <button
-              className="secondary-button"
-              onClick={() => {
-                void document.documentElement.requestFullscreen?.();
-              }}
-              type="button"
-            >
-              Focus mode
-            </button>
-            {!isWebinar ? (
-              <button
-                className="secondary-button"
-                onClick={() =>
-                  setSelectedAnswers((current) => {
-                    const nextAnswers = { ...current };
-                    delete nextAnswers[currentQuestion.id];
-                    return nextAnswers;
-                  })
-                }
-                type="button"
-              >
-                Clear choice
-              </button>
-            ) : null}
-            {!isWebinar ? (
-              currentIndex < questions.length - 1 ? (
-                <button
-                  className="primary-button"
-                  onClick={() => setCurrentIndex((current) => Math.min(current + 1, questions.length - 1))}
-                  type="button"
-                >
-                  Next question
-                </button>
-              ) : (
-                <button
-                  className="primary-button"
-                  disabled={!data.quiz.canAttemptNow || isSubmitting}
-                  onClick={() => void handleSubmit()}
-                  type="button"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit quiz"}
-                </button>
-              )
-            ) : (
-              <span className="section-copy">
-                {lockedAnswer ? "Answer locked for this question." : "Pick once to lock your answer for the room."}
-              </span>
-            )}
-          </div>
-        </div>
       </article>
     </section>
   );

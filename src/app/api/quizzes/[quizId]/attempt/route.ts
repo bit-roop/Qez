@@ -133,15 +133,14 @@ export async function GET(
     );
 
     const now = new Date();
+    const requiresScheduledStart = quiz.mode === "WEBINAR";
     const availability =
       quiz.state !== QuizState.ACTIVE
         ? "Quiz is not active yet."
-        : now < quiz.startsAt
-          ? quiz.mode === "WEBINAR"
+        : now > quiz.endsAt
+          ? "Quiz has already ended."
+          : requiresScheduledStart && now < quiz.startsAt
             ? "Waiting for the host to start the synchronized round."
-            : "Quiz has not started yet."
-          : now > quiz.endsAt
-            ? "Quiz has already ended."
             : existingAttempt &&
                 (existingAttempt.status === "SUBMITTED" ||
                   existingAttempt.status === "AUTO_SUBMITTED")

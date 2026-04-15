@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       return jsonError("Quiz is not active.", 400);
     }
 
-    if (now < quiz.startsAt) {
+    if (quiz.mode === "WEBINAR" && now < quiz.startsAt) {
       return jsonError("Quiz has not started yet.", 400);
     }
 
