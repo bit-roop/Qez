@@ -21,13 +21,13 @@ A real-time competitive assessment platform built with **Next.js 15**, **Postgre
 | Sr | Description | Link |
 |----|-------------|------|
 | 1 | Project Code (GitHub) | [View](https://github.com/bit-roop/qez) |
-| 2 | RA2411030030042 — Project Report | [View](https://drive.google.com/file/d/1eAwcLCVuA1cGre2e_TJs6dopWXeC2Ofb/view?usp=drive_link) |
-| 3 | RA2411030030043 — Project Report | [View](https://drive.google.com/file/d/1WQ_9q7u6Eq0z9U-kZC7nnivue6LVIKGf/view?usp=share_link) |
-| 4 | Final PPT | [View](https://drive.google.com/file/d/1RTK8MIeL28GCEN3vmWALT_2Y1qAwWdw5/view?usp=drive_link) |
-| 5 | RA2411030030042 — Certificate | [View](https://drive.google.com/file/d/1gUYLUBmzC-jp7dMVa3SGqbroSgV34D4i/view?usp=drive_link) |
-| 6 | RA2411030030043 — Certificate | [View](https://drive.google.com/file/d/1Kfuwe-UkRL4jxhaJ5QRFgCvnaF0bYyGL/view?usp=share_link) |
-| 7 | RA2411030030042 — Course Report | [View](https://drive.google.com/file/d/1H4JLzbDeZ9s87UZE5tRNBkep89HSIdeQ/view?usp=drive_link) |
-| 8 | RA2411030030043 — Course Report | [View](https://drive.google.com/file/d/1PKWay00mn-YNLR1P3A5Hjpq9T--PtBt1/view?usp=share_link) |
+| 2 | RA2411030030042 — Project Report | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/DBMS%20FINAL%20Report%20File-%20RA2411030030042.pdf) |
+| 3 | RA2411030030043 — Project Report | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/RA2411030030043_DBMS%20FINAL%20DONEE-4.pdf) |
+| 4 | Final PPT | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/Presentation%20PDF.pdf) |
+| 5 | RA2411030030042 — Certificate | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/RA2411030030042_Certificate.png) |
+| 6 | RA2411030030043 — Certificate | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/RA2411030030043_Certificate.png) |
+| 7 | RA2411030030042 — Course Report | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/RA2411030030042_DBMS%20course%20report%20Final%20(1).pdf) |
+| 8 | RA2411030030043 — Course Report | [View](https://github.com/bit-roop/Qez/blob/main/Documents_DBMS/RA2411030030043_DBMS_Course_Report_Nikunj.pdf) |
 
 ---
 
